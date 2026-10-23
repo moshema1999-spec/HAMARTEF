@@ -74,6 +74,9 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .app{max-width:600px;margin:0 auto;display:flex;flex-direction:column;gap:24px;padding-top:4px;padding-bottom:120px}
 .head{display:flex;flex-direction:column;gap:10px}
 .largetitle{font-size:34px;font-weight:700;letter-spacing:.01em;line-height:1.2}
+.acctbtn{align-self:flex-start;display:flex;align-items:center;gap:4px;color:var(--tint);font-size:17px;font-weight:600;min-height:32px;margin-top:-6px}
+.acctbtn svg{width:18px;height:18px}
+.acctbtn:active{opacity:.4}
 .month{display:flex;align-items:center;justify-content:space-between;background:var(--cell);border-radius:12px;padding:2px 4px}
 .month b{font-weight:600}
 .chev{width:44px;height:38px;display:grid;place-items:center;color:var(--tint)}
@@ -246,6 +249,7 @@ input::placeholder{color:var(--label3)}
 <main class="app gut" id="app">
   <div class="head">
     <h1 class="largetitle">המרתף</h1>
+    <button class="acctbtn" id="acctBtn" hidden><span id="acctName"></span><span data-ic="chevD"></span></button>
     <div class="month">
       <button class="chev" id="prevM" aria-label="החודש הקודם" data-ic="chevR"></button>
       <b id="mLabel"></b>
@@ -279,7 +283,7 @@ const PAYS={cash:"מזומן",bit:"ביט / פייבוקס",transfer:"העברה
 const ICONS={
   plus:'<path d="M12 5v14M5 12h14"/>',
   settings:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
-  chevL:'<path d="M15 6l-6 6 6 6"/>',chevR:'<path d="M9 6l6 6-6 6"/>',
+  chevL:'<path d="M15 6l-6 6 6 6"/>',chevR:'<path d="M9 6l6 6-6 6"/>',chevD:'<path d="M6 9l6 6 6-6"/>',
   check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
   wine:'<path d="M7 3h10v5a5 5 0 0 1-10 0V3zM12 13v8M8 21h8M7.3 7h9.4"/>',
   sale:'<path d="M6 8h12l-1 12H7L6 8zM9 8V6a3 3 0 0 1 6 0v2"/>',
@@ -345,10 +349,23 @@ const byDateDesc=(a,b)=>-byDate(a,b);
 
 /* ---------- storage ---------- */
 const load=k=>{try{const v=JSON.parse(localStorage.getItem(k)||"[]");return Array.isArray(v)?v:[]}catch(e){return[]}};
-let wines=load(K.wines),custs=load(K.custs),txs=load(K.txs);
-function save(){try{localStorage.setItem(K.wines,JSON.stringify(wines));localStorage.setItem(K.custs,JSON.stringify(custs));localStorage.setItem(K.txs,JSON.stringify(txs));return true}catch(e){return false}}
-const snapshot=()=>JSON.stringify({wines,custs,txs});
-function restoreSnap(s){const o=JSON.parse(s);wines=o.wines;custs=o.custs;txs=o.txs;save();refreshAll()}
+/* accounts: each account keeps its own wines, customers and transactions */
+const ACC_K="cel-accounts-v1",ACT_K="cel-active-account";
+function loadAccounts(){try{const v=JSON.parse(localStorage.getItem(ACC_K)||"null");if(Array.isArray(v)&&v.length&&v.every(a=>a&&typeof a.id==="string"&&typeof a.name==="string"))return v}catch(e){}return[{id:"main",name:"החשבון שלי"}]}
+let accounts=loadAccounts(),acc=(()=>{try{return localStorage.getItem(ACT_K)}catch(e){return null}})();
+if(!accounts.some(a=>a.id===acc))acc=accounts[0].id;
+const keyOf=(id,base)=>id==="main"?base:base+":"+id;
+const dk=base=>keyOf(acc,base);
+const accName=()=>accounts.find(a=>a.id===acc)?.name||"";
+const safeName=s=>s.replace(/[\\/:*?"<>|]/g,"").trim();
+let wines,custs,txs;
+function loadData(){wines=load(dk(K.wines));custs=load(dk(K.custs));txs=load(dk(K.txs))}
+loadData();
+function save(){try{localStorage.setItem(dk(K.wines),JSON.stringify(wines));localStorage.setItem(dk(K.custs),JSON.stringify(custs));localStorage.setItem(dk(K.txs),JSON.stringify(txs));return true}catch(e){return false}}
+function saveAccounts(){try{localStorage.setItem(ACC_K,JSON.stringify(accounts));localStorage.setItem(ACT_K,acc);return true}catch(e){return false}}
+function accSummary(a){const t=load(keyOf(a.id,K.txs)),w=load(keyOf(a.id,K.wines));const n=t.filter(x=>x.kind==="sale").length;return n+(n===1?" מכירה":" מכירות")+" · "+w.length+(w.length===1?" יין":" יינות")}
+const snapshot=()=>JSON.stringify({acc,wines,custs,txs});
+function restoreSnap(s){const o=JSON.parse(s);if(o.acc!==acc)return;wines=o.wines;custs=o.custs;txs=o.txs;save();refreshAll()}
 const getLS=(k,d)=>{try{return localStorage.getItem(k)??d}catch(e){return d}};
 const setLS=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){}};
 
@@ -823,20 +840,60 @@ function custForm(c){const ed=!!c;const f=c?{...c}:{name:"",phone:"",note:""};le
         if(used){banner("אי אפשר למחוק לקוח שיש לו מכירות.");return}
         actionSheet({title:"למחוק את הלקוח?",what:c.name,buttons:[{label:"מחיקת לקוח",destructive:true,fn:()=>{const s=snapshot();custs=custs.filter(x=>x.id!==c.id);save();stack.length=1;closeSheets();refreshAll();banner("הלקוח נמחק",undoTo(s))}}]})}},"מחיקת לקוח"))))}}}
 
+/* ---------- accounts ---------- */
+function switchAccount(id){if(id===acc||!accounts.some(a=>a.id===id))return;hideBanner();closeRow();acc=id;saveAccounts();loadData();filter="all";refreshAll()}
+function accountsPage(){return{title:"חשבונות",trail:{label:"הוספה",fn:()=>push(accountForm(null))},render(){
+  return h("div",{class:"pagewrap"},
+    sec(null,grp(...accounts.map(a=>h("button",{class:"cell withicon",onclick:()=>push(accountForm(a))},sq(a.id===acc?"cust":"gray","user"),
+      h("span",{class:"grow"},h("span",{class:"t1"},a.name),h("span",{class:"t2"},accSummary(a)+(a.id===acc?" · פעיל עכשיו":""))),disc()))),
+      sf("הקישו על חשבון כדי לשנות את השם שלו, לעבור אליו או למחוק אותו.")),
+    sec(null,grp(h("button",{class:"cell tint withicon",onclick:()=>push(accountForm(null))},h("span",{class:"sq b-cust",html:icon("plus")}),"הוספת חשבון"))))}}}
+function accountForm(a){const ed=!!a;let name=a?a.name:"",err;
+  const showE=m=>{err.textContent=m;err.hidden=false};
+  function submit(){const n=name.trim();
+    if(!n)return showE("הזינו שם לחשבון.");
+    if(accounts.some(x=>x.id!==(a&&a.id)&&x.name.trim()===n))return showE("כבר יש חשבון בשם הזה.");
+    const prev=JSON.stringify(accounts),prevAcc=acc;
+    if(ed)accounts=accounts.map(x=>x.id===a.id?{...x,name:n}:x);
+    else{const na={id:uid("a"),name:n};accounts.push(na);acc=na.id}
+    if(!saveAccounts()){accounts=JSON.parse(prev);acc=prevAcc;return showE("השמירה לא הצליחה. ייתכן שהזיכרון בטלפון מלא.")}
+    if(!ed){loadData();filter="all"}
+    pop();refreshAll();if(!ed)banner("עברתם לחשבון החדש: "+n)}
+  return{title:ed?"עריכת חשבון":"חשבון חדש",lead:"ביטול",trail:{label:"שמירה",fn:submit},render(){
+    err=h("p",{class:"errline",hidden:true,role:"alert"});
+    const W=h("div",{class:"pagewrap"},err,
+      sec("שם החשבון",grp(h("div",{class:"cell"},h("input",{class:"text",placeholder:"למשל: פרטי, עם השותף",value:name,oninput:e=>{name=e.target.value}}))),
+        !ed&&sf("החשבון החדש מתחיל ריק. אחרי השמירה תעברו אליו אוטומטית.")));
+    if(ed&&a.id!==acc)W.append(sec(null,grp(h("button",{class:"cell tint center",onclick:()=>{switchAccount(a.id);pop();banner("עברתם לחשבון "+a.name)}},"מעבר לחשבון הזה"))));
+    if(ed&&accounts.length>1)W.append(sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:"למחוק את החשבון?",what:a.name+" · "+accSummary(a),msg:"כל היינות, הלקוחות והתנועות של החשבון יימחקו.",buttons:[{label:"מחיקת חשבון",destructive:true,fn:()=>{
+      const keys=[K.wines,K.custs,K.txs,K.backup].map(b=>keyOf(a.id,b));
+      const saved=keys.map(k=>[k,getLS(k,null)]),prevAcc=JSON.stringify(accounts),prevActive=acc;
+      try{keys.forEach(k=>localStorage.removeItem(k))}catch(e){}
+      accounts=accounts.filter(x=>x.id!==a.id);
+      if(acc===a.id){acc=accounts[0].id;loadData();filter="all"}
+      saveAccounts();pop();refreshAll();
+      banner("החשבון נמחק",()=>{saved.forEach(([k,v])=>{if(v!=null)setLS(k,v)});accounts=JSON.parse(prevAcc);acc=prevActive;saveAccounts();loadData();refreshAll()})}}]})},"מחיקת חשבון")),
+      sf("מומלץ לגבות את החשבון לפני המחיקה.")));
+    return W}}}
+
 /* ---------- settings ---------- */
 function settingsPage(){return{title:"הגדרות",render(){
   const seg=h("div",{class:"seg"},...[["auto","אוטומטי"],["light","בהיר"],["dark","כהה"]].map(([k,l])=>h("button",{"data-t":k,onclick:()=>{applyTheme(k);setSeg(seg,"t",k)}},l)));
   setSeg(seg,"t",getLS(K.theme,"auto"));
-  const lb=+getLS(K.backup,0);
+  const lb=+getLS(dk(K.backup),0);
   return h("div",{class:"pagewrap"},
+    sec("חשבון",grp(
+      ...accounts.map(a=>h("button",{class:"cell withicon","aria-checked":String(a.id===acc),onclick:()=>{if(a.id!==acc){switchAccount(a.id);banner("עברתם לחשבון "+a.name)}}},sq(a.id===acc?"cust":"gray","user"),h("span",{class:"grow"},h("span",{class:"t1"},a.name),h("span",{class:"t2"},accSummary(a))),h("span",{class:"checkmark",html:icon("check")}))),
+      h("button",{class:"cell tint",onclick:()=>push(accountsPage())},accounts.length>1?"ניהול חשבונות":"הוספת חשבון ושינוי שם")),
+      sf("לכל חשבון יש יינות, לקוחות, מכירות והוצאות משלו, עם אותם מסכים. למשל חשבון פרטי וחשבון עם שותף.")),
     sec("מראה",seg),
     sec("ייצוא וגיבוי",grp(
       h("button",{class:"cell withicon",onclick:exportXlsx},sq("sale","sheet"),h("span",{class:"grow"},h("span",{class:"t1"},"ייצוא לאקסל"),h("span",{class:"t2"},"סיכום חודשי, מכירות, קניות, הוצאות, מלאי ולקוחות")),disc()),
       h("button",{class:"cell withicon",onclick:backup},sq("cust","down"),h("span",{class:"grow"},h("span",{class:"t1"},"גיבוי נתונים"),h("span",{class:"t2"},lb?"גיבוי אחרון: "+new Date(lb).toLocaleDateString("he-IL"):"עוד לא גיביתם")),disc()),
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
-      sf("הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
-    sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:"למחוק את כל הנתונים?",what:wines.length+" יינות · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 1"))}}}
+      sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
+    sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" יינות · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
+    sf("המרתף · גרסה 2"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
@@ -847,9 +904,9 @@ async function deliver(blob,name){
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return"ok";
 }
 async function backup(){
-  const data={app:"cellar",version:1,exported:new Date().toISOString(),wines,customers:custs,txs};
-  const r=await deliver(new Blob([JSON.stringify(data,null,1)],{type:"application/json"}),"המרתף-גיבוי-"+todayStr()+".json");
-  if(r==="ok"){setLS(K.backup,String(Date.now()));rerender()}
+  const data={app:"cellar",version:1,account:accName(),exported:new Date().toISOString(),wines,customers:custs,txs};
+  const r=await deliver(new Blob([JSON.stringify(data,null,1)],{type:"application/json"}),"המרתף-גיבוי-"+(accounts.length>1?safeName(accName())+"-":"")+todayStr()+".json");
+  if(r==="ok"){setLS(dk(K.backup),String(Date.now()));rerender()}
 }
 const isD=s=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s);
 const str=v=>typeof v==="string"?v:"";
@@ -872,7 +929,7 @@ $("restoreIn").addEventListener("change",async e=>{
   const file=e.target.files[0];if(!file)return;
   let d=null;try{d=cleanBackup(JSON.parse(await file.text()))}catch(_){}
   if(!d){banner("הקובץ הזה לא נראה כמו גיבוי של המרתף.");return}
-  actionSheet({title:"לשחזר מהגיבוי?",what:d.wines.length+" יינות · "+d.custs.length+" לקוחות · "+d.txs.length+" תנועות",msg:"הנתונים הנוכחיים יוחלפו.",buttons:[{label:"שחזור",destructive:true,fn:()=>{
+  actionSheet({title:"לשחזר מהגיבוי?",what:d.wines.length+" יינות · "+d.custs.length+" לקוחות · "+d.txs.length+" תנועות",msg:accounts.length>1?"הנתונים הנוכחיים בחשבון "+accName()+" יוחלפו.":"הנתונים הנוכחיים יוחלפו.",buttons:[{label:"שחזור",destructive:true,fn:()=>{
     const s=snapshot();wines=d.wines;custs=d.custs;txs=d.txs;
     if(!save()){restoreSnap(s);banner("השחזור לא הצליח. ייתכן שהזיכרון בטלפון מלא.");return}
     closeSheets();refreshAll();banner("הנתונים שוחזרו",undoTo(s))}}]});
@@ -943,7 +1000,7 @@ function xlsxSheets(){
   return S;
 }
 async function exportXlsx(){if(!txs.length&&!wines.length){banner("אין עדיין נתונים לייצוא.");return}
-  await deliver(buildXlsx(xlsxSheets()),"המרתף-"+todayStr()+".xlsx")}
+  await deliver(buildXlsx(xlsxSheets()),"המרתף-"+(accounts.length>1?safeName(accName())+"-":"")+todayStr()+".xlsx")}
 
 /* ---------- main render ---------- */
 function tile(k,label,v,cp,acc,plain){return h("div",{class:"tile"},h("span",{class:"tl c-"+k},h("i",{class:"b-"+k,html:icon(k)}),label),h("span",{class:plain?"v num":"v num"},v),cp&&h("span",{class:"cp"},cp),acc&&h("span",{class:"acc"},...acc))}
@@ -990,6 +1047,8 @@ function sampleData(){
 function render(){
   C=compute();
   const now=monthOf(todayStr());
+  const multi=accounts.length>1;$("acctBtn").hidden=!multi;$("acctName").textContent=accName();
+  $("navTitle").textContent=multi?accName():"המרתף";document.title=multi?"המרתף · "+accName():"המרתף";
   $("mLabel").textContent=monthLabel(cur);$("nextM").disabled=cur>=now;
   const M=$("main");M.replaceChildren();
   if(!txs.length&&!wines.length){
@@ -1070,6 +1129,9 @@ $("prevM").addEventListener("click",()=>{cur=addMonth(cur,-1);render()});
 $("nextM").addEventListener("click",()=>{cur=addMonth(cur,1);render()});
 $("saleBtn").addEventListener("click",()=>openSheet(txPage(null,{kind:"sale"})));
 $("setBtn").addEventListener("click",()=>openSheet(settingsPage()));
+$("acctBtn").addEventListener("click",()=>actionSheet({title:"מעבר לחשבון",buttons:[
+  ...accounts.filter(a=>a.id!==acc).map(a=>({label:a.name,fn:()=>{switchAccount(a.id);banner("עברתם לחשבון "+a.name)}})),
+  {label:"ניהול חשבונות",fn:()=>{openSheet(settingsPage());push(accountsPage())}}]}));
 $("addBtn").addEventListener("click",()=>actionSheet({buttons:[
   {label:"מכירה",fn:()=>openSheet(txPage(null,{kind:"sale"}))},
   {label:"קניית סחורה",fn:()=>openSheet(txPage(null,{kind:"buy"}))},
