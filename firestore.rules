@@ -1,0 +1,33 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Owner, or someone whose verified email was added to the account
+    function isMember(data) {
+      return signedIn() && (
+        data.owner == request.auth.uid ||
+        (request.auth.token.email_verified == true &&
+         request.auth.token.email.lower() in data.emails)
+      );
+    }
+
+    match /ledgers/{ledgerId} {
+      allow read: if isMember(resource.data);
+      allow create: if signedIn()
+        && request.resource.data.owner == request.auth.uid
+        && request.resource.data.emails is list;
+      allow update: if isMember(resource.data)
+        && request.resource.data.owner == resource.data.owner
+        && request.resource.data.ownerEmail == resource.data.ownerEmail;
+      allow delete: if signedIn() && resource.data.owner == request.auth.uid;
+
+      match /items/{itemId} {
+        allow read, write: if isMember(get(/databases/$(database)/documents/ledgers/$(ledgerId)).data);
+      }
+    }
+  }
+}
