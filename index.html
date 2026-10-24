@@ -5,10 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="המרתף">
-<meta name="theme-color" content="#F2F2F7">
+<meta name="theme-color" content="#140C24">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700&display=swap">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" href="icon-192.png">
 <title>המרתף</title>
@@ -258,9 +261,261 @@ input::placeholder{color:var(--label3)}
   @keyframes fade{from{opacity:0}to{opacity:1}}
   @keyframes drop{from{transform:translateY(-120%)}to{transform:none}}
 }
+.balance .big .cur{font-size:.5em;font-weight:600;margin-inline-end:4px;vertical-align:.45em;opacity:.8}
+/* glass sliders */
+.rangecell{flex-direction:column;align-items:stretch;gap:6px;padding-block:12px}
+.rangetop{display:flex;align-items:center;gap:8px}
+.rangerow{display:flex;align-items:center;gap:10px}
+.rangerow .t2{flex:none;font-size:12px}
+.range{flex:1;min-width:0;accent-color:var(--tint);height:28px}
+/* theme picker */
+.skins{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.skin{display:flex;flex-direction:column;align-items:stretch;gap:4px;padding:10px;border-radius:20px;background:var(--cell);border:1px solid var(--sep);text-align:right}
+.skin .pv{display:block;height:64px;border-radius:14px;border:1px solid rgba(255,255,255,.25)}
+.skin .nm{font-weight:600;font-size:15px;color:var(--label)}
+.skin .ds{font-size:12px;color:var(--label2)}
+.skin[aria-pressed="true"]{border-color:var(--tint);box-shadow:0 0 0 2px var(--tint)}
+.skin:active{opacity:.7}
+/* info dots */
+.shl{display:inline-flex;align-items:center;gap:7px;min-width:0}
+.sh{align-items:center}
+.info{position:relative;flex:none;width:18px;height:18px;border-radius:50%;padding:0;display:inline-grid;place-items:center;
+  font:700 11px/1 var(--font);color:var(--label);background:var(--fill);border:1px solid var(--sep)}
+.info::after{content:"";position:absolute;inset:-11px}
+.info:active{opacity:.5}
+.inforow{display:flex;padding:0 16px;margin-top:-6px}
+.tippop{position:fixed;z-index:70;padding:14px 16px;border-radius:20px;font-size:14px;line-height:1.5;color:var(--label);
+  background:var(--as-bg);border:1px solid var(--sep);box-shadow:0 18px 40px rgba(0,0,0,.3);display:flex;flex-direction:column;gap:6px;
+  -webkit-backdrop-filter:blur(30px) saturate(180%);backdrop-filter:blur(30px) saturate(180%)}
+.tippop b{font-weight:600}
+@media (prefers-reduced-motion:no-preference){.tippop{animation:fade .18s}}
+
+.blobs{display:none}
 </style>
+<style id="skinGlass">
+/* =====================================================================
+   GLASS LAYER: Liquid-glass look on a dark violet base.
+   Only presentation lives here; every rule overrides the base design above.
+   Layout concept: one dark field lit by four blurred colour blobs; every
+   surface is a frosted pane floating over it, the tab bar a floating capsule.
+   ===================================================================== */
+:root:not(#glass){
+  --base:#140C24;
+  --blob-wine:#9E2B55;--blob-amber:#E89B3C;--blob-violet:#5B4FE0;--blob-teal:#1FA59A;
+  --glass:rgba(255,255,255,.12);--glass-hi:rgba(255,255,255,.14);--glass-in:rgba(255,255,255,.08);
+  --glass-line:rgba(255,255,255,.26);--glass-shine:inset 0 1px 0 rgba(255,255,255,.4);
+  --glass-blur:blur(24px) saturate(170%);
+  --bg:#140C24;--cell:var(--glass);--sheet:rgba(30,19,54,.72);--sheet-cell:var(--glass-in);
+  --label:#FFFFFF;--label2:rgba(255,255,255,.8);--label3:rgba(255,255,255,.45);--sep:rgba(255,255,255,.16);
+  --fill:rgba(255,255,255,.12);--fill-press:rgba(255,255,255,.10);--seg-sel:rgba(255,255,255,.28);
+  --tint:#8EC1FF;--red:#FF5A6E;--green:#3DDC84;--teal:#6FE3F5;--indigo:#8F86FF;--orange:#FFB054;--gray:#B9B3C9;--wine:#9E2B55;
+  --green-text:#6EF0A6;--red-text:#FF8A96;--orange-text:#FFC774;--indigo-text:#B7B0FF;--wine-text:#FF9DBB;
+  --bar:rgba(20,12,36,.55);--as-bg:rgba(44,30,72,.82);--scrim:rgba(8,4,18,.55);
+  --font:"Rubik",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,"Helvetica Neue",Arial,sans-serif;
+  --font-num:"Rubik",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  /* category tints for icon squares: fill at 30%, stroke in a light shade */
+  --c-sale:48,209,120;--c-sale-ink:#8FF5B9;
+  --c-prof:90,200,250;--c-prof-ink:#A6E6FF;
+  --c-buy:120,104,255;--c-buy-ink:#C4BDFF;
+  --c-exp:255,82,104;--c-exp-ink:#FFADB8;
+  --c-stock:255,159,60;--c-stock-ink:#FFD29A;
+  --c-cust:64,140,255;--c-cust-ink:#A9CBFF;
+  --c-neutral:255,255,255;--c-neutral-ink:#FFFFFF;
+  color-scheme:dark;
+}
+html{background:var(--base)}
+body{background:transparent;font-family:var(--font);font-weight:400;letter-spacing:0}
+.num{font-family:var(--font-num);font-variant-numeric:tabular-nums}
+body::before{background:linear-gradient(to bottom,var(--base),rgba(20,12,36,0))}
+
+/* background blobs */
+.blobs{display:block;position:fixed;inset:0;z-index:-1;overflow:hidden;pointer-events:none}
+.blobs i{position:absolute;border-radius:50%;filter:blur(76px);-webkit-filter:blur(76px);transform:translateZ(0)}
+.blobs i:nth-child(1){width:70vw;height:70vw;max-width:520px;max-height:520px;background:var(--blob-wine);opacity:.85;top:-12vh;right:-18vw}
+.blobs i:nth-child(2){width:60vw;height:60vw;max-width:440px;max-height:440px;background:var(--blob-amber);opacity:.6;top:34vh;left:-22vw}
+.blobs i:nth-child(3){width:72vw;height:72vw;max-width:540px;max-height:540px;background:var(--blob-violet);opacity:.75;bottom:-14vh;right:-20vw}
+.blobs i:nth-child(4){width:46vw;height:46vw;max-width:360px;max-height:360px;background:var(--blob-teal);opacity:.55;bottom:12vh;left:4vw}
+
+/* glass surfaces */
+.group,.card,.tile,.month{background:var(--glass);border:1px solid var(--glass-line);box-shadow:var(--glass-shine);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);border-radius:26px}
+.card{padding:20px 22px}
+.card.balance{background:var(--glass-hi);border-radius:32px;padding:22px 24px;box-shadow:var(--glass-shine),0 20px 40px rgba(0,0,0,.25)}
+.tile{padding:18px;gap:6px}
+.month{border-radius:22px;padding:4px 6px}
+.app{gap:16px;padding-bottom:calc(136px + env(safe-area-inset-bottom))}
+.tiles{gap:12px}
+.sheet .group,.sheetbody .tiles .tile{background:var(--glass-in)}
+.empty .cell{background:transparent}
+
+/* type */
+.largetitle{font-weight:700;letter-spacing:0}
+.sheetnav h3,.month b{font-weight:600}
+.balance .cap{color:var(--label2);font-size:15px;font-weight:500}
+.balance .big{font-size:56px;font-weight:700;line-height:1.05;margin-top:6px;letter-spacing:-.01em;color:#fff}
+.balance.pos .big{color:#fff}.balance.neg .big{color:var(--red-text)}
+.balance .big .cur{font-size:24px;font-weight:600;color:var(--label2);margin-inline-end:6px;vertical-align:.65em}
+.balance .sub{color:var(--label2)}
+.tile .v{font-weight:700}
+.tl{font-weight:600}
+.t2,.sf,.sh,.val{color:var(--label2)}
+.sh{font-weight:500;letter-spacing:.01em}
+
+/* icons: 36px squares, 12px radius, tinted by category */
+.sq{width:36px;height:36px;border-radius:12px}
+.sq svg{width:20px;height:20px}
+.withicon,.swrow.withicon{--inset:66px}
+.cell{padding:8px 18px;min-height:48px}
+.tl i{width:36px;height:36px;border-radius:12px}
+.tl i svg{width:20px;height:20px}
+.sq.b-sale,.tl i.b-sale{background:rgba(var(--c-sale),.3);color:var(--c-sale-ink)}
+.sq.b-prof,.tl i.b-prof{background:rgba(var(--c-prof),.3);color:var(--c-prof-ink)}
+.sq.b-buy,.tl i.b-buy{background:rgba(var(--c-buy),.32);color:var(--c-buy-ink)}
+.sq.b-exp,.tl i.b-exp{background:rgba(var(--c-exp),.3);color:var(--c-exp-ink)}
+.sq.b-wine,.sq.b-spirit,.sq.b-cap,.tl i.b-wine,.tl i.b-cap,.tl i.b-spirit{background:rgba(var(--c-stock),.3);color:var(--c-stock-ink)}
+.sq.b-cust,.tl i.b-cust{background:rgba(var(--c-cust),.32);color:var(--c-cust-ink)}
+.sq.b-gray,.sq.b-flow,.tl i.b-gray{background:rgba(var(--c-neutral),.16);color:var(--c-neutral-ink)}
+.c-sale{color:var(--c-sale-ink)}.c-prof{color:var(--c-prof-ink)}.c-buy{color:var(--c-buy-ink)}.c-exp{color:var(--c-exp-ink)}
+.c-wine,.c-cap{color:var(--c-stock-ink)}.c-cust{color:var(--c-cust-ink)}
+/* solid marks (bars, dots) */
+.b-sale{background:#3DDC84}.b-prof{background:#5AC8FA}.b-buy{background:#7868FF}.b-exp{background:#FF5268}
+.b-cap,.b-wine,.b-spirit{background:#FF9F3C}.b-cust{background:#408CFF}
+.track{background:rgba(255,255,255,.12)}
+.split{background:rgba(255,255,255,.12)}
+
+/* controls */
+.seg{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18);border-radius:16px;padding:3px}
+.seg button{border-radius:12px;color:var(--label2);min-height:34px}
+.seg button[aria-pressed="true"]{background:var(--seg-sel);color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.numin,.datepill{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.14);border-radius:12px;color:#fff;color-scheme:dark}
+.stepper{background:rgba(255,255,255,.12);border-radius:12px}
+.switch{background:rgba(255,255,255,.22)}
+.switch:checked{background:#34C77B}
+.chev,.navicon,.navtext,.cell.tint,.acctbtn{color:var(--tint)}
+
+/* top nav */
+.scrolled .nav{background:var(--bar);-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);box-shadow:0 1px 0 rgba(255,255,255,.12)}
+
+/* sheets, action sheets, banners */
+.sheet{background:var(--sheet);-webkit-backdrop-filter:blur(34px) saturate(170%);backdrop-filter:blur(34px) saturate(170%);
+  border:1px solid rgba(255,255,255,.2);border-bottom:0;border-radius:30px 30px 0 0;box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 -20px 50px rgba(0,0,0,.35)}
+.grabber{background:rgba(255,255,255,.35)}
+.as-group{background:var(--as-bg);border:1px solid rgba(255,255,255,.2);border-radius:24px;box-shadow:var(--glass-shine)}
+.as-btn{border-top-color:rgba(255,255,255,.14)}
+.as-cancel{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.22);border-radius:24px;-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur);color:var(--tint)}
+.banner{background:var(--as-bg);border:1px solid rgba(255,255,255,.22);border-radius:22px;box-shadow:var(--glass-shine),0 16px 40px rgba(0,0,0,.35)}
+
+/* swipe to delete: content is translucent, so reveal the red button only as far as the row has moved */
+.swcontent,.sheet .swcontent{background:transparent}
+.swdel{background:#E5364D;clip-path:inset(0 calc(88px - var(--sw,0px)) 0 0)}
+@media (prefers-reduced-motion:no-preference){.swdel{transition:clip-path .25s cubic-bezier(.2,.8,.2,1)}}
+
+/* deeper glass: thinner tint, stronger blur, specular sheen and a light-catching rim */
+:root:not(#glass){--glass:rgba(255,255,255,.07);--glass-hi:rgba(255,255,255,.09);--glass-in:rgba(255,255,255,.05);
+  --glass-blur:blur(32px) saturate(210%) brightness(1.06);--sheet:rgba(30,18,54,.48);--as-bg:rgba(48,32,80,.62);--scrim:rgba(8,4,18,.4)}
+.blobs i:nth-child(1){opacity:.95}.blobs i:nth-child(2){opacity:.75}.blobs i:nth-child(3){opacity:.9}.blobs i:nth-child(4){opacity:.7}
+.group,.card,.tile,.month,.tabbar,.seg,.as-group,.as-cancel,.banner,.tippop{position:relative;border-color:rgba(255,255,255,.12);
+  background:linear-gradient(155deg,rgba(255,255,255,.17) 0%,rgba(255,255,255,.06) 38%,rgba(255,255,255,.025) 64%,rgba(255,255,255,.08) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -1px 0 rgba(255,255,255,.07),inset 0 0 26px rgba(255,255,255,.05),0 12px 30px rgba(0,0,0,.16)}
+.tippop,.tabbar,.banner{position:fixed}
+.card.balance{background:linear-gradient(155deg,rgba(255,255,255,.22) 0%,rgba(255,255,255,.08) 40%,rgba(255,255,255,.035) 66%,rgba(255,255,255,.11) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.6),inset 0 -1px 0 rgba(255,255,255,.08),inset 0 0 30px rgba(255,255,255,.06),0 20px 40px rgba(0,0,0,.25)}
+.sheet .group,.sheetbody .tiles .tile{background:linear-gradient(155deg,rgba(255,255,255,.12),rgba(255,255,255,.04) 45%,rgba(255,255,255,.06))}
+.group::after,.card::after,.tile::after,.month::after,.tabbar::after,.as-group::after,.tippop::after{content:"";position:absolute;inset:0;border-radius:inherit;padding:1px;pointer-events:none;
+  background:linear-gradient(150deg,rgba(255,255,255,.75),rgba(255,255,255,.14) 28%,rgba(255,255,255,0) 52%,rgba(255,255,255,.08) 70%,rgba(255,255,255,.4) 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0)}
+.seg button[aria-pressed="true"]{background:linear-gradient(160deg,rgba(255,255,255,.4),rgba(255,255,255,.18));box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 12px rgba(0,0,0,.15)}
+.sheet{-webkit-backdrop-filter:blur(44px) saturate(210%);backdrop-filter:blur(44px) saturate(210%);
+  background:linear-gradient(170deg,rgba(255,255,255,.14),rgba(40,24,70,.5) 30%,rgba(24,14,44,.62))}
+.info{background:linear-gradient(160deg,rgba(255,255,255,.34),rgba(255,255,255,.1));border-color:rgba(255,255,255,.45);box-shadow:inset 0 1px 0 rgba(255,255,255,.6)}
+
+/* the popover must stay readable over busy content */
+.tippop{background:linear-gradient(155deg,rgba(86,60,128,.94),rgba(34,20,60,.96));-webkit-backdrop-filter:blur(36px) saturate(200%);backdrop-filter:blur(36px) saturate(200%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 22px 50px rgba(0,0,0,.45)}
+/* floating tab bar capsule */
+.tabbar{left:max(16px,env(safe-area-inset-left));right:max(16px,env(safe-area-inset-right));bottom:max(24px,env(safe-area-inset-bottom));
+  height:72px;padding:8px;border-radius:36px;align-items:center;gap:4px;
+  background:rgba(255,255,255,.14);border:1px solid var(--glass-line);box-shadow:var(--glass-shine),0 18px 40px rgba(0,0,0,.35);
+  -webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}
+.tab{height:56px;min-height:0;justify-content:center;border-radius:28px;color:rgba(255,255,255,.72);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{background:linear-gradient(160deg,rgba(255,255,255,.36),rgba(255,255,255,.18));color:#fff;box-shadow:inset 0 1px 0 rgba(255,255,255,.6),0 4px 12px rgba(0,0,0,.15)}
+.badge{top:2px;box-shadow:0 0 0 2px rgba(40,24,64,.9)}
+.tabplus{min-height:0;height:56px}
+.tabplus span{width:56px;height:56px;border-radius:50%;background:linear-gradient(140deg,#C23A6B,#9E2B55 55%,#E89B3C);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 8px 22px rgba(158,43,85,.55)}
+</style>
+<style id="skinLight">
+/* light glass: pale lilac base, pastel blobs, dark ink */
+:root:not(#glass){
+  --base:#EFE9F6;--bg:#EFE9F6;--blob-wine:#F3A3BF;--blob-amber:#FFCB8E;--blob-violet:#A99CFF;--blob-teal:#86DCCB;
+  --label:#1C1430;--label2:rgba(28,20,48,.68);--label3:rgba(28,20,48,.38);--sep:rgba(28,20,48,.12);
+  --fill:rgba(28,20,48,.07);--fill-press:rgba(28,20,48,.06);--seg-sel:#FFFFFF;
+  --tint:#3550C8;--red:#E5364D;--green:#1F9D55;--teal:#0B8FA6;--orange:#D9822B;
+  --green-text:#16794A;--red-text:#C4243B;--orange-text:#A85A12;--indigo-text:#4C3FD0;--wine-text:#A0153E;
+  --bar:rgba(255,255,255,.55);--as-bg:rgba(255,255,255,.78);--scrim:rgba(40,20,60,.22);--sheet:rgba(255,255,255,.55);
+  --c-sale-ink:#16794A;--c-prof-ink:#0B7392;--c-buy-ink:#4C3FD0;--c-exp-ink:#C4243B;--c-stock-ink:#A85A12;--c-cust-ink:#2D55C8;
+  --c-neutral:28,20,48;--c-neutral-ink:#1C1430;color-scheme:light}
+body::before{background:linear-gradient(to bottom,var(--base),rgba(239,233,246,0))}
+.blobs i:nth-child(1),.blobs i:nth-child(2),.blobs i:nth-child(3),.blobs i:nth-child(4){opacity:.7}
+.group,.card,.tile,.month,.tabbar,.seg,.as-group,.as-cancel,.banner{border-color:rgba(255,255,255,.75);
+  background:linear-gradient(155deg,rgba(255,255,255,.75) 0%,rgba(255,255,255,.45) 40%,rgba(255,255,255,.32) 65%,rgba(255,255,255,.55) 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.95),inset 0 0 22px rgba(255,255,255,.25),0 10px 30px rgba(60,30,90,.10)}
+.card.balance{background:linear-gradient(155deg,rgba(255,255,255,.85),rgba(255,255,255,.5) 45%,rgba(255,255,255,.62));box-shadow:inset 0 1px 0 #fff,0 20px 40px rgba(60,30,90,.16)}
+.sheet .group,.sheetbody .tiles .tile{background:rgba(255,255,255,.6)}
+.sheet{background:linear-gradient(170deg,rgba(255,255,255,.82),rgba(244,238,250,.74));border-color:rgba(255,255,255,.8)}
+.tippop{background:linear-gradient(155deg,#FFFFFF,#F4EEFA);border-color:rgba(28,20,48,.1);box-shadow:inset 0 1px 0 #fff,0 22px 50px rgba(60,30,90,.22)}
+.balance .big,.balance.pos .big{color:var(--label)}
+.seg button[aria-pressed="true"]{background:#FFFFFF;color:var(--label);box-shadow:0 3px 10px rgba(60,30,90,.12)}
+.numin,.datepill{background:rgba(255,255,255,.7);border-color:rgba(28,20,48,.1);color:var(--label);color-scheme:light}
+.stepper{background:rgba(255,255,255,.7)}
+.switch{background:rgba(28,20,48,.15)}
+.tab{color:rgba(28,20,48,.58)}
+.tab[aria-current="page"]{background:rgba(255,255,255,.9);color:var(--label);box-shadow:inset 0 1px 0 #fff,0 4px 12px rgba(60,30,90,.12)}
+.badge{box-shadow:0 0 0 2px #FFFFFF}
+.info{color:var(--label);background:rgba(255,255,255,.8);border-color:rgba(28,20,48,.22)}
+.grabber{background:rgba(28,20,48,.25)}
+.scrolled .nav{box-shadow:0 1px 0 rgba(28,20,48,.08)}
+.as-btn{border-top-color:rgba(28,20,48,.1)}
+.track,.split{background:rgba(28,20,48,.08)}
+</style>
+<style id="skinWine">
+/* bordeaux glass: near-black wine base, wine and gold light */
+:root:not(#glass){--base:#170811;--bg:#170811;--blob-wine:#A3214F;--blob-amber:#D9A441;--blob-violet:#6B1838;--blob-teal:#C2577E;
+  --tint:#F3C77E;--sheet:rgba(40,12,26,.55);--as-bg:rgba(70,22,44,.68);--bar:rgba(23,8,17,.55)}
+body::before{background:linear-gradient(to bottom,var(--base),rgba(23,8,17,0))}
+.sheet{background:linear-gradient(170deg,rgba(255,255,255,.12),rgba(60,18,38,.54) 30%,rgba(30,8,20,.66))}
+.tippop{background:linear-gradient(155deg,rgba(112,36,66,.95),rgba(40,12,26,.97))}
+.tabplus span{background:linear-gradient(140deg,#B8325F,#7E1D40 55%,#D9A441)}
+</style>
+<style id="glassLevel"></style>
+<script>
+/* glass strength: t = transparency 0-100 (100 = clearest), b = blur in px. Shared by the first paint and the settings sliders */
+window.__glassCss=function(skin,t,b){
+  var f=1-Math.max(0,Math.min(100,t))/100,light=skin==="light",n=function(x){return Math.max(0,Math.min(1,x)).toFixed(3)};
+  var A=light?[.55+.4*f,.25+.5*f,.15+.55*f,.35+.45*f]:[.10+.28*f,.03+.2*f,.015+.18*f,.05+.18*f];
+  var w=function(x){return "rgba(255,255,255,"+n(x)+")"};
+  var g="linear-gradient(155deg,"+w(A[0])+" 0%,"+w(A[1])+" 38%,"+w(A[2])+" 64%,"+w(A[3])+" 100%)";
+  var gb="linear-gradient(155deg,"+w(A[0]+.06)+" 0%,"+w(A[1]+.03)+" 40%,"+w(A[2]+.015)+" 66%,"+w(A[3]+.04)+" 100%)";
+  var sat=Math.round(Math.min(220,140+b*2.5));
+  return ":root:not(#glass){--glass-blur:blur("+b+"px) saturate("+sat+"%) brightness(1.06)}\n"+
+    ".group,.card,.tile,.month,.tabbar,.seg,.as-group,.as-cancel,.banner,.skin{background:"+g+"}\n"+
+    ".card.balance{background:"+gb+"}\n.sheet .group,.sheetbody .tiles .tile{background:"+g+"}\n"+
+    ".skin{-webkit-backdrop-filter:var(--glass-blur);backdrop-filter:var(--glass-blur)}";
+};
+window.__glassDefaults={t:75,b:32};
+/* apply the saved theme before the first paint */
+(function(){var k="glass";try{k=localStorage.getItem("cel-skin")||"glass"}catch(e){}
+  var on={glass:["skinGlass"],light:["skinGlass","skinLight"],wine:["skinGlass","skinWine"],classic:[]}[k];if(!on){k="glass";on=["skinGlass"]}
+  ["skinGlass","skinLight","skinWine"].forEach(function(id){var el=document.getElementById(id);if(el)el.disabled=on.indexOf(id)<0});
+  document.documentElement.setAttribute("data-skin",k);
+  var t=window.__glassDefaults.t,b=window.__glassDefaults.b;
+  try{var gt=localStorage.getItem("cel-glass-t"),gb=localStorage.getItem("cel-glass-b");if(gt!==null&&!isNaN(+gt))t=+gt;if(gb!==null&&!isNaN(+gb))b=+gb}catch(e){}
+  var gl=document.getElementById("glassLevel");gl.textContent=window.__glassCss(k,t,b);gl.disabled=k==="classic"})();
+</script>
 </head>
 <body>
+<div class="blobs" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
 <header class="nav gut">
   <div class="lead"><button class="navicon" id="acctNav" aria-label="חשבונות" data-ic="accounts"></button></div>
   <div class="navtitle" id="navTitle">המרתף</div>
@@ -391,6 +646,52 @@ const prodSq=w=>{const g=w?tgroup(w.type):"wine";return g==="wine"?sq("wine"):sq
 const sec=(title,...kids)=>h("section",{class:"sec"},title!=null&&h("h2",{class:"sh"},title),...kids);
 const grp=(...kids)=>h("div",{class:"group"},...kids);
 const sf=t=>h("p",{class:"sf"},t);
+/* explanations live behind a small "!" dot; applyTips() moves them there after each render */
+const tip=t=>t?h("p",{class:"sf tipsrc"},t):null;
+let tipPop=null;
+function closeTip(){if(tipPop){tipPop.remove();tipPop=null}}
+function showTip(btn,title,text){
+  const same=tipPop&&tipPop._btn===btn;closeTip();if(same)return;
+  const pop=h("div",{class:"tippop",role:"tooltip"},title&&h("b",null,title),...text.split("\n\n").map(x=>h("p",null,x)));
+  pop._btn=btn;document.body.append(pop);tipPop=pop;
+  const r=btn.getBoundingClientRect(),vw=document.documentElement.clientWidth,vh=innerHeight,w=Math.min(320,vw-32);
+  pop.style.width=w+"px";
+  let left=Math.min(Math.max(16,r.right-w+8),vw-16-w);pop.style.left=left+"px";
+  const ph=pop.offsetHeight;let top=r.bottom+8;if(top+ph>vh-110&&r.top-8-ph>16)top=r.top-8-ph;pop.style.top=Math.max(16,top)+"px";
+}
+document.addEventListener("pointerdown",e=>{if(tipPop&&!tipPop.contains(e.target)&&e.target!==tipPop._btn)closeTip()},true);
+addEventListener("scroll",closeTip,{passive:true});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeTip()});
+function infoDot(title){const b=h("button",{class:"info",type:"button","aria-label":"מידע"+(title?" על "+title:"")},"!");
+  b.addEventListener("click",e=>{e.stopPropagation();e.preventDefault();showTip(b,b._title,b._text)});b._title=title;b._text="";return b}
+function applyTips(root){
+  if(!root)return;
+  root.querySelectorAll(".tipsrc").forEach(p=>{
+    const text=p.textContent.trim(),secEl=p.closest(".sec");
+    if(!text){p.remove();return}
+    let dot;
+    if(secEl){
+      /* inside a section: the dot sits next to the section title */
+      p.remove();
+      let sh=[...secEl.children].find(c=>c.classList.contains("sh"));
+      if(!sh){sh=h("h2",{class:"sh"});secEl.prepend(sh)}
+      dot=sh.querySelector(".info");
+      if(!dot){
+        const two=sh.childElementCount>1&&sh.firstElementChild.tagName==="SPAN";
+        const title=(two?sh.firstElementChild.textContent:sh.textContent).trim();
+        dot=infoDot(title);const wrap=h("span",{class:"shl"});
+        if(two){const lead=sh.firstElementChild;lead.replaceWith(wrap);wrap.append(lead,dot)}
+        else{while(sh.firstChild)wrap.append(sh.firstChild);wrap.append(dot);sh.append(wrap)}
+      }
+    }else{
+      /* loose note: a small row with just the dot, merged with a row right before it */
+      const prev=p.previousElementSibling;
+      if(prev&&prev.classList.contains("inforow")){dot=prev.querySelector(".info");p.remove()}
+      else{dot=infoDot("");const row=h("div",{class:"inforow"},dot);p.replaceWith(row)}
+    }
+    dot._text=(dot._text?dot._text+"\n\n":"")+text;
+  });
+}
 const byDate=(a,b)=>a.date<b.date?-1:a.date>b.date?1:(a.kind===b.kind?a.created-b.created:(a.kind==="buy"?-1:1));
 const byDateDesc=(a,b)=>-byDate(a,b);
 
@@ -517,6 +818,18 @@ function lastBuyLine(w,sup,ex){const bs=txs.filter(t=>t.kind==="buy"&&t.id!==ex)
 const custName=id=>custById(id)?.name||"";
 
 /* ---------- theme ---------- */
+const SKINS=[
+  {k:"glass",name:"לילה",desc:"זכוכית על סגול כהה",css:["skinGlass"],pv:"radial-gradient(circle at 80% 15%,#9E2B55 0,transparent 55%),radial-gradient(circle at 15% 60%,#E89B3C 0,transparent 50%),radial-gradient(circle at 85% 95%,#5B4FE0 0,transparent 55%),#140C24"},
+  {k:"light",name:"זכוכית בהירה",desc:"פסטל על רקע בהיר",css:["skinGlass","skinLight"],pv:"radial-gradient(circle at 80% 15%,#F3A3BF 0,transparent 55%),radial-gradient(circle at 15% 60%,#FFCB8E 0,transparent 50%),radial-gradient(circle at 85% 95%,#A99CFF 0,transparent 55%),#EFE9F6"},
+  {k:"wine",name:"בורדו",desc:"יין וזהב על כמעט שחור",css:["skinGlass","skinWine"],pv:"radial-gradient(circle at 80% 15%,#A3214F 0,transparent 55%),radial-gradient(circle at 15% 60%,#D9A441 0,transparent 50%),radial-gradient(circle at 85% 95%,#6B1838 0,transparent 55%),#170811"},
+  {k:"classic",name:"קלאסי",desc:"העיצוב המקורי, בהיר או כהה",css:[],pv:"linear-gradient(135deg,#F2F2F7 50%,#1C1C1E 50%)"}];
+let skin=(()=>{try{const k=localStorage.getItem("cel-skin");return SKINS.some(x=>x.k===k)?k:"glass"}catch(e){return"glass"}})();
+const glassVal=(key,def)=>{const v=getLS(key,null);return v!==null&&!isNaN(+v)?+v:def};
+let glassT=glassVal("cel-glass-t",window.__glassDefaults.t),glassB=glassVal("cel-glass-b",window.__glassDefaults.b);
+function applyGlass(){const el=$("glassLevel");if(!el)return;el.textContent=window.__glassCss(skin,glassT,glassB);el.disabled=skin==="classic"}
+function setSkin(k){const sk=SKINS.find(x=>x.k===k);if(!sk)return;skin=k;setLS("cel-skin",k);applyGlass();
+  ["skinGlass","skinLight","skinWine"].forEach(id=>{const el=$(id);if(el)el.disabled=!sk.css.includes(id)});
+  document.documentElement.setAttribute("data-skin",k);applyTheme(getLS(K.theme,"auto"));render()}
 function applyTheme(t){const r=document.documentElement;
   if(t==="light"||t==="dark")r.setAttribute("data-theme",t);else r.removeAttribute("data-theme");
   setLS(K.theme,t);
@@ -531,7 +844,7 @@ addEventListener("scroll",()=>document.documentElement.classList.toggle("scrolle
 
 /* ---------- swipe ---------- */
 let openRow=null;
-function closeRow(){if(!openRow)return;const c=openRow.querySelector(".swcontent");c.style.transform="";openRow.classList.remove("open");openRow=null}
+function closeRow(){if(!openRow)return;const c=openRow.querySelector(".swcontent");c.style.transform="";openRow.style.setProperty("--sw","0px");openRow.classList.remove("open");openRow=null}
 document.addEventListener("pointerdown",e=>{if(openRow&&!openRow.contains(e.target))closeRow()},true);
 function attachSwipe(row){
   const c=row.querySelector(".swcontent"),W=88;let x0=0,y0=0,dx=0,base=0,drag=false,lock=null,justAt=0;
@@ -539,9 +852,9 @@ function attachSwipe(row){
   c.addEventListener("pointermove",e=>{if(!drag)return;const mx=e.clientX-x0,my=e.clientY-y0;
     if(lock===null){if(Math.abs(mx)<8&&Math.abs(my)<8)return;lock=Math.abs(mx)>Math.abs(my)?"x":"y";if(lock==="x"){if(openRow&&openRow!==row)closeRow();try{c.setPointerCapture(e.pointerId)}catch(_){}}}
     if(lock!=="x"){drag=false;return}
-    dx=Math.max(0,Math.min(W*1.4,base+mx));c.style.transition="none";c.style.transform="translateX("+dx+"px)"});
+    dx=Math.max(0,Math.min(W*1.4,base+mx));c.style.transition="none";c.style.transform="translateX("+dx+"px)";row.style.setProperty("--sw",Math.min(dx,W)+"px")});
   const end=()=>{if(!drag)return;drag=false;c.style.transition="";if(lock!=="x")return;
-    const open=dx>W/2;c.style.transform=open?"translateX("+W+"px)":"";row.classList.toggle("open",open);openRow=open?row:(openRow===row?null:openRow);justAt=Date.now()};
+    const open=dx>W/2;c.style.transform=open?"translateX("+W+"px)":"";row.style.setProperty("--sw",open?W+"px":"0px");row.classList.toggle("open",open);openRow=open?row:(openRow===row?null:openRow);justAt=Date.now()};
   c.addEventListener("pointerup",end);c.addEventListener("pointercancel",end);
   c.addEventListener("click",e=>{if(Date.now()-justAt<350||row.classList.contains("open")){e.stopPropagation();e.preventDefault();if(Date.now()-justAt>=350)closeRow()}},true);
 }
@@ -560,7 +873,7 @@ function show(restore){
   sLead.textContent=deep?"חזרה":(p.lead||"סיום");
   sLead.onclick=()=>deep?pop():closeSheets();
   if(p.trail){sTrail.hidden=false;sTrail.textContent=p.trail.label;sTrail.onclick=p.trail.fn}else{sTrail.hidden=true;sTrail.onclick=null}
-  sInner.replaceChildren(p.render());
+  closeTip();sInner.replaceChildren(p.render());applyTips(sInner);
   sBody.scrollTop=restore?(p.scroll||0):0;
 }
 const go=p=>stack.length?push(p):openSheet(p);
@@ -655,8 +968,8 @@ function txPage(t,preset){
         g.append(h("button",{class:"cell tint withicon",onclick:()=>{f.lines=st.last.lines.map(toForm);rerender()}},h("span",{class:"sq b-cust",html:icon("repeat")}),"הזמנה חוזרת"));
       }
       if(st.debt>0.004)g.append(h("div",{class:"cell"},h("span",{class:"grow"},"חוב פתוח"),nm(st.debt,false,"val strong")));
-      kids.push(sf(st.n?("לקוח קבוע · "+st.n+" הזמנות. המחירים מולאו לפי מה שהוא שילם בפעם האחרונה."):"לקוח שמור."));
-    }else kids.push(sf("לקוח חדש יישמר אוטומטית, ובפעם הבאה מספיק להקליד את תחילת השם."));
+      kids.push(tip(st.n?("לקוח קבוע · "+st.n+" הזמנות. המחירים מולאו לפי מה שהוא שילם בפעם האחרונה."):"לקוח שמור."));
+    }else kids.push(tip("לקוח חדש יישמר אוטומטית, ובפעם הבאה מספיק להקליד את תחילת השם."));
     setTimeout(upd,0);
     return sec("לקוח",...kids);
   }
@@ -722,7 +1035,7 @@ function txPage(t,preset){
       h("div",{class:"cell withicon"},sq("prof"),h("span",{class:"grow"},h("span",{class:"t1"},"רווח"),margin),prof))}
     return h("div",{class:"pagewrap"},
       sec(null,grp(h("button",{class:"cell tint",onclick:()=>{f.lines.push(newLine());rerender()}},"+ הוספת מוצר נוסף"))),
-      sec("סיכום",g,sale&&sf("העלות מחושבת לפי ממוצע מחירי הקנייה של כל מוצר במלאי.")));
+      sec("סיכום",g,sale&&tip("העלות מחושבת לפי ממוצע מחירי הקנייה של כל מוצר במלאי.")));
   }
 
   function expSec(){
@@ -735,7 +1048,7 @@ function txPage(t,preset){
   function openSec(){
     return sec(null,grp(h("label",{class:"cell withicon"},sq("cap","bottle"),h("span",{class:"grow"},h("span",{class:"t1"},"מלאי קיים"),h("span",{class:"t2"},"סחורה שכבר הייתה אצלכם, לא קנייה חדשה")),
       h("input",{type:"checkbox",class:"switch",role:"switch",checked:f.open,onchange:e=>{f.open=e.target.checked;rerender()}}))),
-      sf(f.open?"הבקבוקים נכנסים למלאי ולקרן לפי העלות שתזינו, כדי שהרווח במכירות יחושב נכון. הם לא נספרים כקנייה של החודש ולא יורדים מהתזרים.":"הדליקו אם זו סחורה שכבר הייתה במלאי לפני שהתחלתם להשתמש באפליקציה."));
+      tip(f.open?"הבקבוקים נכנסים למלאי ולקרן לפי העלות שתזינו, כדי שהרווח במכירות יחושב נכון. הם לא נספרים כקנייה של החודש ולא יורדים מהתזרים.":"הדליקו אם זו סחורה שכבר הייתה במלאי לפני שהתחלתם להשתמש באפליקציה."));
   }
 
   function detailsSec(){
@@ -744,7 +1057,7 @@ function txPage(t,preset){
       !(f.kind==="buy"&&f.open)&&h("button",{class:"cell",onclick:()=>push(pickerPage("אמצעי תשלום",[[null,"לא צוין"],...Object.entries(PAYS)],f.pay||null,v=>{f.pay=v}))},h("span",{class:"grow"},"אמצעי תשלום"),h("span",{class:"val"},PAYS[f.pay]||"לא צוין"),disc()));
     if(f.kind==="sale")g.append(h("label",{class:"cell"},h("span",{class:"grow"},"שולם"),h("input",{type:"checkbox",class:"switch",role:"switch",checked:f.paid,onchange:e=>{f.paid=e.target.checked}})));
     g.append(h("div",{class:"cell"},h("input",{class:"text",placeholder:"הערה",value:f.note,oninput:e=>{f.note=e.target.value}})));
-    return sec("פרטים",g,f.kind==="sale"&&sf("מכירה שלא שולמה תופיע בחובות הלקוחות, ותיכנס לתזרים רק כשתסמנו שהיא שולמה."),f.kind==="buy"&&f.open&&sf("כדאי לבחור תאריך שלפני המכירה הראשונה שרשמתם, כדי שהעלות של כל מכירה תחושב לפי המלאי הזה."));
+    return sec("פרטים",g,f.kind==="sale"&&tip("מכירה שלא שולמה תופיע בחובות הלקוחות, ותיכנס לתזרים רק כשתסמנו שהיא שולמה."),f.kind==="buy"&&f.open&&tip("כדאי לבחור תאריך שלפני המכירה הראשונה שרשמתם, כדי שהעלות של כל מכירה תחושב לפי המלאי הזה."));
   }
 
   function submit(){
@@ -856,7 +1169,7 @@ function winePage(w,onSaved){
       W.append(sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>{
         if(used){banner("אי אפשר למחוק מוצר שמופיע במכירות או בקניות.");return}
         actionSheet({title:"למחוק את המוצר?",what:wineLabel(w),buttons:[{label:"מחיקת מוצר",destructive:true,fn:()=>{const s=snapshot();wines=wines.filter(x=>x.id!==w.id);save();pop();refreshAll();banner("המוצר נמחק",undoTo(s))}}]})}},"מחיקת מוצר")),
-        used&&sf("מוצר שכבר נמכר או נקנה נשאר ברשימה כדי שההיסטוריה תישאר מדויקת.")));
+        used&&tip("מוצר שכבר נמכר או נקנה נשאר ברשימה כדי שההיסטוריה תישאר מדויקת.")));
     }
     return W}};
 }
@@ -888,11 +1201,11 @@ function winesPage(){let mode="stock",grpF="all",q="";return{title:"מלאי",tr
   const nBuys=txs.filter(t=>t.kind==="buy"&&!t.open).length;
   if(nBuys)W.append(grp(h("button",{class:"cell withicon",onclick:()=>openSheet(convertPage())},sq("buy"),h("span",{class:"grow"},h("span",{class:"t1"},"הפיכת קניות קיימות למלאי קיים"),h("span",{class:"t2"},nBuys+(nBuys===1?" קנייה רשומה":" קניות רשומות")+" · בלי להזין מחדש")),disc())));
   const openTx=txs.filter(t=>t.kind==="buy"&&t.open);
-  if(openTx.length)W.append(sf("נרשם מלאי קיים בשווי "+money(openTx.reduce((a,t)=>a+linesTot(t),0))+" ("+bottles(openTx.reduce((a,t)=>a+linesQ(t),0))+"). את הרישום אפשר לערוך מרשימת התנועות במסך הבית."));
+  if(openTx.length)W.append(tip("נרשם מלאי קיים בשווי "+money(openTx.reduce((a,t)=>a+linesTot(t),0))+" ("+bottles(openTx.reduce((a,t)=>a+linesQ(t),0))+"). את הרישום אפשר לערוך מרשימת התנועות במסך הבית."));
   W.append(gseg,seg);
   if(wines.length>6)W.append(grp(h("div",{class:"cell withicon"},h("span",{class:"sq b-gray",html:icon("search")}),h("input",{class:"text",type:"search",placeholder:"חיפוש מוצר",value:q,oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}}))));
-  W.append(box,emptyEl,sf("המספר בצד הוא כמות הבקבוקים במלאי. העלות היא ממוצע מחירי הקנייה של הבקבוקים שנשארו."));
-  if(cap.noPrice)W.append(sf("ל־"+cap.noPrice+" מוצרים במלאי אין מחיר מכירה רגיל, ולכן השווי שלהם מחושב לפי העלות."));
+  W.append(box,emptyEl,tip("המספר בצד הוא כמות הבקבוקים במלאי. העלות היא ממוצע מחירי הקנייה של הבקבוקים שנשארו."));
+  if(cap.noPrice)W.append(tip("ל־"+cap.noPrice+" מוצרים במלאי אין מחיר מכירה רגיל, ולכן השווי שלהם מחושב לפי העלות."));
   return W}}}
 
 /* ---------- turn purchases already entered into opening stock ---------- */
@@ -914,7 +1227,7 @@ function convertPage(){const sel=new Set();
     if(!buys.length)return h("div",{class:"empty"},h("span",{class:"ei",html:icon("buy")}),h("b",null,"אין קניות להמרה"),h("span",null,"כל הקניות כבר רשומות כמלאי קיים, או שעוד לא נרשמו קניות."));
     const all=buys.every(t=>sel.has(t.id));
     const W=h("div",{class:"pagewrap"},
-      sf("סמנו את הקניות שהן בעצם סחורה שכבר הייתה אצלכם, ולחצו \"המרה\" למעלה. שום דבר לא צריך להיות מוזן מחדש."),
+      tip("סמנו את הקניות שהן בעצם סחורה שכבר הייתה אצלכם, ולחצו \"המרה\" למעלה. שום דבר לא צריך להיות מוזן מחדש."),
       grp(h("button",{class:"cell tint",onclick:()=>{if(all)sel.clear();else buys.forEach(t=>sel.add(t.id));rerender()}},all?"ביטול הסימון":"סימון כל הקניות ("+buys.length+")"),
         buys.length>1&&h("button",{class:"cell tint",onclick:()=>push(pickerPage("סימון כל הקניות עד",[...new Set(buys.map(t=>t.date))].reverse().map(d=>[d,"עד "+dayLabel(d)+(d.slice(0,4)!==todayStr().slice(0,4)?" "+d.slice(0,4):"")]),null,d=>{sel.clear();buys.filter(t=>t.date<=d).forEach(t=>sel.add(t.id))}))},"סימון כל הקניות עד תאריך מסוים")));
     let m=null,g=null;
@@ -1157,7 +1470,7 @@ function authPage(){
       sec(null,grp(
         h("label",{class:"cell"},h("span",{style:"min-width:64px"},"מייל"),h("input",{class:"text",type:"email",inputmode:"email",dir:"ltr",style:"text-align:left",autocomplete:"username",autocapitalize:"off",value:email,oninput:e=>{email=e.target.value}})),
         h("label",{class:"cell"},h("span",{style:"min-width:64px"},"סיסמה"),pwIn)),
-        sf(mode==="up"?"אחרי ההרשמה יישלח אליכם מייל עם קישור לאימות. צריך לאשר אותו כדי לראות חשבונות ששותפו איתכם.":"השותף נכנס עם המייל שלו, לא עם המייל שלכם.")),
+        tip(mode==="up"?"אחרי ההרשמה יישלח אליכם מייל עם קישור לאימות. צריך לאשר אותו כדי לראות חשבונות ששותפו איתכם.":"השותף נכנס עם המייל שלו, לא עם המייל שלכם.")),
       mode==="in"&&sec(null,grp(h("button",{class:"cell tint center",onclick:async()=>{
         const e=email.trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e))return E("הזינו קודם את המייל, ואז הקישו על \"שכחתי סיסמה\".");
         try{await cloud.api.resetPassword(e);banner("שלחנו ל־"+e+" קישור לבחירת סיסמה חדשה")}catch(x){E(cloudErrMsg(x))}}},"שכחתי סיסמה"))));
@@ -1186,7 +1499,7 @@ function cloudAccountForm(a){
     err=h("p",{class:"errline",hidden:true,role:"alert"});
     const W=h("div",{class:"pagewrap"},err,
       sec("שם החשבון",grp(h("div",{class:"cell"},h("input",{class:"text",placeholder:"למשל: פרטי, עם השותף",value:name,oninput:e=>{name=e.target.value}}))),
-        !ed&&sf("החשבון החדש מתחיל ריק ונשמר בענן. אחרי השמירה תעברו אליו, ותוכלו לשתף אותו עם השותף.")));
+        !ed&&tip("החשבון החדש מתחיל ריק ונשמר בענן. אחרי השמירה תעברו אליו, ותוכלו לשתף אותו עם השותף.")));
     if(ed){
       const others=a.emails.filter(e=>e!==me);
       const g=grp();
@@ -1197,7 +1510,7 @@ function cloudAccountForm(a){
       if(isOwner)g.append(h("div",{class:"cell withicon"},h("span",{class:"sq b-cust",html:icon("plus")}),
         h("input",{class:"text",type:"email",inputmode:"email",dir:"ltr",style:"text-align:left",autocapitalize:"off",autocomplete:"off",placeholder:"המייל של השותף",value:newEmail,oninput:e=>{newEmail=e.target.value},onkeydown:e=>{if(e.key==="Enter")share()}}),
         h("button",{class:"val",style:"color:var(--tint);font-weight:600",onclick:share},"שיתוף")));
-      W.append(sec("שיתוף",g,sf(isOwner?"השותף נרשם לאפליקציה עם המייל הזה ומאמת אותו, ואז החשבון מופיע אצלו עם אותם נתונים. כל שינוי של אחד מכם מופיע אצל השני.":"את החשבון הזה שיתף איתכם "+a.ownerEmail+". שניכם רואים ועורכים את אותם נתונים.")));
+      W.append(sec("שיתוף",g,tip(isOwner?"השותף נרשם לאפליקציה עם המייל הזה ומאמת אותו, ואז החשבון מופיע אצלו עם אותם נתונים. כל שינוי של אחד מכם מופיע אצל השני.":"את החשבון הזה שיתף איתכם "+a.ownerEmail+". שניכם רואים ועורכים את אותם נתונים.")));
       if(a.id!==acc)W.append(sec(null,grp(h("button",{class:"cell tint center",onclick:()=>{switchAccount(a.id);pop();banner("עברתם לחשבון "+a.name)}},"מעבר לחשבון הזה"))));
       W.append(sec(null,grp(isOwner
         ?h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:"למחוק את החשבון מהענן?",what:a.name+(others.length?" · משותף עם "+others.join(", "):""),msg:"החשבון וכל הנתונים שלו יימחקו אצל כל מי שמשותף בו. אי אפשר לבטל את זה, אז כדאי לגבות קודם.",buttons:[{label:"מחיקת חשבון",destructive:true,fn:()=>{
@@ -1213,7 +1526,7 @@ function cloudSec(){
   if(!cloud)return sec(T,grp(h("div",{class:"cell withicon"},sq("gray","cloud"),h("span",{class:"grow"},h("span",{class:"t1"},"לא הוגדר"),h("span",{class:"t2 wrap"},"כדי לסנכרן בין טלפונים צריך לחבר את האפליקציה ל־Firebase. ההוראות בקובץ FIREBASE.md.")))));
   if(!cloudOn())return sec(T,grp(h("button",{class:"cell withicon",onclick:()=>go(authPage())},sq("cust","cloud"),
       h("span",{class:"grow"},h("span",{class:"t1"},"כניסה או הרשמה"),h("span",{class:"t2 wrap"},"כדי לראות את אותם נתונים בכמה טלפונים ולשתף חשבון עם שותף")),disc())),
-    cloud.err&&h("p",{class:"errline"},cloud.err),sf("בלי כניסה, הנתונים נשמרים רק בטלפון הזה."));
+    cloud.err&&h("p",{class:"errline"},cloud.err),tip("בלי כניסה, הנתונים נשמרים רק בטלפון הזה."));
   const u=cloud.user;
   const g=grp(h("div",{class:"cell withicon"},sq(cloud.err?"exp":"sale","cloud"),h("span",{class:"grow"},h("span",{class:"t1",dir:"ltr",style:"text-align:right"},u.email),h("span",{class:"t2 wrap"},acc?syncText():"מחובר"))));
   g.append(h("div",{class:"cell"},h("span",{class:"grow t2 wrap",style:"font-size:13px"},"כדי שישתפו איתכם חשבון, צריך לשתף בדיוק עם המייל הזה: ",h("b",{dir:"ltr"},u.email))));
@@ -1223,7 +1536,7 @@ function cloudSec(){
     h("button",{class:"cell tint",onclick:()=>cloud.api.resendVerify().then(()=>banner("שלחנו שוב את מייל האימות")).catch(x=>banner(cloudErrMsg(x)))},"שליחה חוזרת של מייל האימות"));
   if(localWithData().length)g.append(h("button",{class:"cell tint",onclick:offerUpload},"העלאת החשבונות מהטלפון לענן"));
   g.append(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:"להתנתק?",msg:"הנתונים נשארים בענן. אחרי ההתנתקות האפליקציה תציג רק את מה שנשמר בטלפון, בלי סנכרון.",buttons:[{label:"התנתקות",destructive:true,fn:()=>cloud.api.signOut()}]})},"התנתקות"));
-  return sec(T,g,sf("כל שינוי נשמר בענן ומופיע אצל כל מי שמחובר לאותו חשבון. בלי קליטה, השינויים נשמרים בטלפון ונשלחים כשהחיבור חוזר."));
+  return sec(T,g,tip("כל שינוי נשמר בענן ומופיע אצל כל מי שמחובר לאותו חשבון. בלי קליטה, השינויים נשמרים בטלפון ונשלחים כשהחיבור חוזר."));
 }
 
 async function firebaseAdapter(config){
@@ -1282,7 +1595,7 @@ function accountsPage(){return{title:"חשבונות",trail:{label:"הוספה",
   return h("div",{class:"pagewrap"},
     sec(null,grp(...accounts.map(a=>h("button",{class:"cell withicon",onclick:()=>push(accountForm(a))},sq(a.id===acc?"cust":"gray","user"),
       h("span",{class:"grow"},h("span",{class:"t1"},a.name),h("span",{class:"t2"},accDesc(a)+(a.id===acc?" · פעיל עכשיו":""))),disc()))),
-      sf("הקישו על חשבון כדי לשנות את השם שלו, לעבור אליו או למחוק אותו.")),
+      tip("הקישו על חשבון כדי לשנות את השם שלו, לעבור אליו או למחוק אותו.")),
     sec(null,grp(h("button",{class:"cell tint withicon",onclick:()=>push(accountForm(null))},h("span",{class:"sq b-cust",html:icon("plus")}),"הוספת חשבון"))))}}}
 function accountForm(a){if(cloudOn())return cloudAccountForm(a);const ed=!!a;let name=a?a.name:"",err;
   const showE=m=>{err.textContent=m;err.hidden=false};
@@ -1299,7 +1612,7 @@ function accountForm(a){if(cloudOn())return cloudAccountForm(a);const ed=!!a;let
     err=h("p",{class:"errline",hidden:true,role:"alert"});
     const W=h("div",{class:"pagewrap"},err,
       sec("שם החשבון",grp(h("div",{class:"cell"},h("input",{class:"text",placeholder:"למשל: פרטי, עם השותף",value:name,oninput:e=>{name=e.target.value}}))),
-        !ed&&sf("החשבון החדש מתחיל ריק. אחרי השמירה תעברו אליו אוטומטית.")));
+        !ed&&tip("החשבון החדש מתחיל ריק. אחרי השמירה תעברו אליו אוטומטית.")));
     if(ed&&a.id!==acc)W.append(sec(null,grp(h("button",{class:"cell tint center",onclick:()=>{switchAccount(a.id);pop();banner("עברתם לחשבון "+a.name)}},"מעבר לחשבון הזה"))));
     if(ed&&accounts.length>1)W.append(sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:"למחוק את החשבון?",what:a.name+" · "+accSummary(a),msg:"כל היינות, הלקוחות והתנועות של החשבון יימחקו.",buttons:[{label:"מחיקת חשבון",destructive:true,fn:()=>{
       const keys=[K.wines,K.custs,K.txs,K.backup].map(b=>keyOf(a.id,b));
@@ -1309,7 +1622,7 @@ function accountForm(a){if(cloudOn())return cloudAccountForm(a);const ed=!!a;let
       if(acc===a.id){acc=accounts[0].id;loadData();filter="all"}
       saveAccounts();pop();refreshAll();
       banner("החשבון נמחק",()=>{saved.forEach(([k,v])=>{if(v!=null)setLS(k,v)});accounts=JSON.parse(prevAcc);acc=prevActive;saveAccounts();loadData();refreshAll()})}}]})},"מחיקת חשבון")),
-      sf("מומלץ לגבות את החשבון לפני המחיקה.")));
+      tip("מומלץ לגבות את החשבון לפני המחיקה.")));
     return W}}}
 
 /* ---------- settings ---------- */
@@ -1321,16 +1634,30 @@ function settingsPage(){return{title:"הגדרות",render(){
     sec("חשבון",grp(
       ...accounts.map(a=>h("button",{class:"cell withicon","aria-checked":String(a.id===acc),onclick:()=>{if(a.id!==acc){switchAccount(a.id);banner("עברתם לחשבון "+a.name)}}},sq(a.id===acc?"cust":"gray","user"),h("span",{class:"grow"},h("span",{class:"t1"},a.name),h("span",{class:"t2"},accDesc(a))),h("span",{class:"checkmark",html:icon("check")}))),
       h("button",{class:"cell tint",onclick:()=>go(accountsPage())},accounts.length>1||cloudOn()?"ניהול חשבונות ושיתוף":"הוספת חשבון ושינוי שם")),
-      sf("לכל חשבון יש מלאי, לקוחות, מכירות והוצאות משלו, עם אותם מסכים. למשל חשבון פרטי וחשבון עם שותף.")),
+      tip("לכל חשבון יש מלאי, לקוחות, מכירות והוצאות משלו, עם אותם מסכים. למשל חשבון פרטי וחשבון עם שותף.")),
     cloudSec(),
-    sec("מראה",seg),
+    sec("ערכת נושא",h("div",{class:"skins"},...SKINS.map(x=>h("button",{class:"skin","aria-pressed":String(skin===x.k),onclick:()=>{if(skin!==x.k){setSkin(x.k);banner("ערכת הנושא: "+x.name)}}},
+      h("span",{class:"pv",style:"background:"+x.pv}),h("span",{class:"nm"},x.name),h("span",{class:"ds"},x.desc))))),
+    skin==="classic"&&sec("מראה",seg),
+    skin!=="classic"&&(()=>{
+      const tv=h("span",{class:"val num"},Math.round(glassT)+"%"),bv=h("span",{class:"val num"},Math.round(glassB)+"px");
+      const tr=h("input",{type:"range",class:"range",id:"glassT",min:"0",max:"100",step:"1",value:String(glassT),"aria-label":"שקיפות הזכוכית",
+        oninput:e=>{glassT=+e.target.value;tv.textContent=glassT+"%";applyGlass()},onchange:()=>setLS("cel-glass-t",String(glassT))});
+      const br=h("input",{type:"range",class:"range",id:"glassB",min:"0",max:"60",step:"1",value:String(glassB),"aria-label":"טשטוש הזכוכית",
+        oninput:e=>{glassB=+e.target.value;bv.textContent=glassB+"px";applyGlass()},onchange:()=>setLS("cel-glass-b",String(glassB))});
+      return sec("רמת הזכוכית",grp(
+        h("div",{class:"cell rangecell"},h("div",{class:"rangetop"},h("span",{class:"grow"},"שקיפות"),tv),h("div",{class:"rangerow"},h("span",{class:"t2"},"חלבית"),tr,h("span",{class:"t2"},"שקופה"))),
+        h("div",{class:"cell rangecell"},h("div",{class:"rangetop"},h("span",{class:"grow"},"טשטוש הרקע"),bv),h("div",{class:"rangerow"},h("span",{class:"t2"},"חד"),br,h("span",{class:"t2"},"מטושטש"))),
+        h("button",{class:"cell tint center",onclick:()=>{glassT=window.__glassDefaults.t;glassB=window.__glassDefaults.b;setLS("cel-glass-t",String(glassT));setLS("cel-glass-b",String(glassB));applyGlass();render()}},"חזרה לברירת המחדל")),
+        tip("השינוי נראה מיד בכל המסכים ונשמר בטלפון הזה. זכוכית שקופה מאוד עם טשטוש נמוך יכולה להקשות על הקריאה, אז כדאי לבדוק גם מסך עם הרבה טקסט."));
+    })(),
     sec("ייצוא וגיבוי",grp(
       h("button",{class:"cell withicon",onclick:exportXlsx},sq("sale","sheet"),h("span",{class:"grow"},h("span",{class:"t1"},"ייצוא לאקסל"),h("span",{class:"t2"},"סיכום חודשי, מכירות, קניות, הוצאות, מלאי ולקוחות")),disc()),
       h("button",{class:"cell withicon",onclick:backup},sq("cust","down"),h("span",{class:"grow"},h("span",{class:"t1"},"גיבוי נתונים"),h("span",{class:"t2"},lb?"גיבוי אחרון: "+new Date(lb).toLocaleDateString("he-IL"):"עוד לא גיביתם")),disc()),
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
-      sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
+      tip((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
     sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" מוצרים · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 9"))}}}
+    sf("המרתף · גרסה 13"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
@@ -1532,7 +1859,7 @@ function render(){
   }
   const r=monthSum(cur),cap=capital();
   // balance
-  M.append(h("div",{class:"card balance "+(r.net>=0?"pos":"neg")},h("div",{class:"cap"},"רווח נקי ב"+monthName(cur)),h("span",{class:"big num"},money(r.net)),
+  M.append(h("div",{class:"card balance "+(r.net>=0?"pos":"neg")},h("div",{class:"cap"},"רווח נקי ב"+monthName(cur)),h("span",{class:"big num"},h("span",{class:"cur"},"₪"),money(r.net)),
     h("div",{class:"sub"},"רווח גולמי ",nm(r.gp)," פחות הוצאות ",nm(r.exp))));
   // tiles
   M.append(h("div",{class:"tiles"},
@@ -1555,14 +1882,14 @@ function render(){
   cg.append(h("div",{class:"cell withicon"},sq("flow","repeat"),h("span",{class:"grow"},h("span",{class:"t1"},"קצב הגלגול"),
     h("span",{class:"t2 wrap"},cap.days!=null?("המלאי יספיק לכ־"+NI.format(cap.days)+" ימים לפי קצב 90 הימים האחרונים"+(cap.turns?" · הקרן מסתובבת כ־"+cap.turns.toFixed(1)+" פעמים בשנה":"")):"יופיע אחרי שיהיו מכירות ב־90 הימים האחרונים"))));
   cg.append(h("div",{class:"cell withicon"},sq("prof"),h("span",{class:"grow"},h("span",{class:"t1"},"רווח נקי מתחילת הדרך"),h("span",{class:"t2"},"רווח גולמי "+money(cap.gpAll)+" פחות כל ההוצאות")),nm(cap.netAll,false,"val "+(cap.netAll>=0?"pos":"neg"))));
-  M.append(sec("קרן ורווח",cg,sf("קרן היא הכסף ששילמתם על הסחורה שעדיין במלאי. כל מכירה מחזירה לקרן את עלות הבקבוקים, והשאר הוא רווח שאפשר למשוך או לגלגל לסחורה נוספת.")));
+  M.append(sec("קרן ורווח",cg,tip("קרן היא הכסף ששילמתם על הסחורה שעדיין במלאי. כל מכירה מחזירה לקרן את עלות הבקבוקים, והשאר הוא רווח שאפשר למשוך או לגלגל לסחורה נוספת.")));
   // cash flow
   M.append(sec("תזרים מזומנים ב"+monthName(cur),grp(
     h("div",{class:"cell withicon"},sq("sale","down"),h("span",{class:"grow"},h("span",{class:"t1"},"נכנס"),h("span",{class:"t2"},"מכירות ששולמו")),nm(r.cin,true,"val pos")),
     h("div",{class:"cell withicon"},sq("buy"),h("span",{class:"grow"},"יצא על סחורה"),nm(-r.buy,false,"val")),
     h("div",{class:"cell withicon"},sq("exp"),h("span",{class:"grow"},"יצא על הוצאות"),nm(-r.exp,false,"val")),
     h("div",{class:"cell withicon"},sq("gray","flow"),h("span",{class:"grow"},h("span",{class:"t1",style:"font-weight:600"},"תזרים נטו")),nm(r.flow,true,"val "+(r.flow>=0?"pos":"neg")))),
-    sf("קניית סחורה מוציאה כסף מהקופה אבל לא מקטינה את הרווח: היא עוברת לקרן, ונכנסת לחישוב הרווח רק כשהבקבוק נמכר.")));
+    tip("קניית סחורה מוציאה כסף מהקופה אבל לא מקטינה את הרווח: היא עוברת לקרן, ונכנסת לחישוב הרווח רק כשהבקבוק נמכר.")));
   // debts
   const unpaid=txs.filter(t=>t.kind==="sale"&&!t.paid).sort(byDate);
   if(unpaid.length){const dg=grp();
@@ -1593,7 +1920,7 @@ function render(){
         const dt=list.filter(x=>x.date===day);const inc=dt.filter(x=>x.kind==="sale").reduce((s,x)=>s+linesTot(x),0);
         M.append(sec(h("span",{style:"display:contents"},h("span",null,dayLabel(day)),inc>0&&h("span",null,"מכירות ",nm(inc))),g))}
       g.append(txRow(t))}
-    M.append(sf("החליקו שורה ימינה כדי למחוק אותה."))}
+    M.append(tip("החליקו שורה ימינה כדי למחוק אותה."))}
 }
 function refreshAll(){render();if(stack.length)rerender()}
 
@@ -1617,6 +1944,7 @@ $("acctNav").addEventListener("click",()=>openSheet(accountsPage()));
 $("addBtn").addEventListener("click",()=>{const tp=tabPages[tab];if(tp&&tp.trail)tp.trail.fn()});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!stack.length)render()});
 
+render=(f=>function(){closeTip();f();applyTips($("main"))})(render);
 render();
 window.__cellar={xlsxSheets,buildXlsx,get txs(){return txs},compute};
 startCloud();
