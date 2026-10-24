@@ -80,6 +80,8 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .syncline{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--label2);margin-top:-6px}
 .syncline.bad{color:var(--red-text)}
 .syncline span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acctseg button{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:15px;min-height:36px}
+.nav .lead{gap:14px}
 .month{display:flex;align-items:center;justify-content:space-between;background:var(--cell);border-radius:12px;padding:2px 4px}
 .month b{font-weight:600}
 .chev{width:44px;height:38px;display:grid;place-items:center;color:var(--tint)}
@@ -244,7 +246,7 @@ input::placeholder{color:var(--label3)}
 </head>
 <body>
 <header class="nav gut">
-  <div class="lead"><button class="navicon" id="setBtn" aria-label="הגדרות" data-ic="settings"></button></div>
+  <div class="lead"><button class="navicon" id="setBtn" aria-label="הגדרות" data-ic="settings"></button><button class="navicon" id="acctNav" aria-label="חשבונות" data-ic="users"></button></div>
   <div class="navtitle" id="navTitle">המרתף</div>
   <div class="trail"><button class="navicon" id="addBtn" aria-label="הוספה" data-ic="plus"></button></div>
 </header>
@@ -253,6 +255,7 @@ input::placeholder{color:var(--label3)}
   <div class="head">
     <h1 class="largetitle">המרתף</h1>
     <button class="acctbtn" id="acctBtn" hidden><span id="acctName"></span><span data-ic="chevD"></span></button>
+    <div class="seg acctseg" id="acctSeg" hidden></div>
     <div class="syncline" id="syncLine" hidden></div>
     <div class="month">
       <button class="chev" id="prevM" aria-label="החודש הקודם" data-ic="chevR"></button>
@@ -404,8 +407,19 @@ let cur=monthOf(todayStr()),filter="all";
 const wineById=id=>wines.find(w=>w.id===id);
 const custById=id=>custs.find(c=>c.id===id);
 const wineLabel=w=>w?(w.name+(w.vintage?" "+w.vintage:"")):"יין שנמחק";
-const linesText=ls=>ls.map(l=>wineLabel(wineById(l.w))+(l.q>1?" ("+l.q+")":"")).join(", ");
-const linesTot=t=>t.lines.reduce((s,l)=>s+l.q*l.p,0);
+/* a line is stored in bottles: q bottles at p per bottle. A case line also keeps u:"c", cs (bottles per case) and cp (price per case) */
+const isCase=l=>l&&l.u==="c"&&l.cs>0&&l.cp!=null;
+const lt=l=>isCase(l)?(l.q/l.cs)*l.cp:l.q*l.p;
+const casesN=n=>n===1?"ארגז":NI.format(n)+" ארגזים";
+const lineQtyText=l=>isCase(l)?casesN(l.q/l.cs)+" של "+l.cs:(l.q>1?String(l.q):"");
+const linesText=ls=>ls.map(l=>{const q=lineQtyText(l);return wineLabel(wineById(l.w))+(q?" ("+q+")":"")}).join(", ");
+const linesTot=t=>t.lines.reduce((s,l)=>s+lt(l),0);
+const defCs=w=>{const x=wineById(w);return x&&x.cs>0?x.cs:6};
+/* form lines: q and p are per unit (bottle or case) */
+const toForm=l=>isCase(l)?{w:l.w,u:"c",cs:l.cs,q:l.q/l.cs,p:l.cp}:{w:l.w,u:"b",cs:defCs(l.w),q:l.q,p:l.p};
+const fromForm=l=>l.u==="c"?{w:l.w,q:l.q*l.cs,p:+(l.p/l.cs).toFixed(4),u:"c",cs:l.cs,cp:r2(l.p)}:{w:l.w,q:l.q,p:r2(l.p)};
+/* price of a past line in the unit the form uses */
+const unitPrice=(l,u,cs)=>{if(!l)return null;if(u==="c")return isCase(l)&&l.cs===cs?l.cp:r2(l.p*cs);return isCase(l)?r2(l.cp/l.cs):l.p};
 const linesQ=t=>t.lines.reduce((s,l)=>s+l.q,0);
 const txAmt=t=>t.kind==="exp"?t.amount:linesTot(t);
 
@@ -413,12 +427,12 @@ const txAmt=t=>t.kind==="exp"?t.amount:linesTot(t);
 function compute(ex){
   const tl=txs.filter(t=>t.id!==ex&&t.kind!=="exp");
   const tot={};
-  for(const t of tl)if(t.kind==="buy")for(const l of t.lines){const o=tot[l.w]||(tot[l.w]={q:0,v:0});o.q+=l.q;o.v+=l.q*l.p}
+  for(const t of tl)if(t.kind==="buy")for(const l of t.lines){const o=tot[l.w]||(tot[l.w]={q:0,v:0});o.q+=l.q;o.v+=lt(l)}
   const st={},cost={};
   for(const t of tl.slice().sort(byDate)){
     if(t.kind==="buy"){for(const l of t.lines){const o=st[l.w]||(st[l.w]={q:0,v:0});
       if(o.q<0){const a=tot[l.w].v/tot[l.w].q;o.v=o.q*a}
-      o.q+=l.q;o.v+=l.q*l.p}}
+      o.q+=l.q;o.v+=lt(l)}}
     else cost[t.id]=t.lines.map(l=>{const o=st[l.w]||(st[l.w]={q:0,v:0});
       const a=o.q>0?o.v/o.q:(tot[l.w]?tot[l.w].v/tot[l.w].q:0);
       const c=l.q*a;o.q-=l.q;o.v=o.q>0?o.v-c:o.q*a;return c});
@@ -435,7 +449,7 @@ function monthSum(m){
   for(const t of txs){const inM=monthOf(t.date)===m;
     if(t.kind==="sale"){
       if(inM){const rv=linesTot(t),cs=tcost(t);r.rev+=rv;r.cogs+=cs;r.nSales++;
-        t.lines.forEach((l,i)=>{const o=r.wines[l.w]||(r.wines[l.w]={rev:0,prof:0,q:0});const lr=l.q*l.p,lc=(C.cost[t.id]||[])[i]||0;o.rev+=lr;o.prof+=lr-lc;o.q+=l.q;r.bottles+=l.q});
+        t.lines.forEach((l,i)=>{const o=r.wines[l.w]||(r.wines[l.w]={rev:0,prof:0,q:0});const lr=lt(l),lc=(C.cost[t.id]||[])[i]||0;o.rev+=lr;o.prof+=lr-lc;o.q+=l.q;r.bottles+=l.q});
         const ck=t.cust||"_";const o=r.custs[ck]||(r.custs[ck]={rev:0,prof:0,n:0});o.rev+=rv;o.prof+=rv-cs;o.n++}
       if(t.paid&&monthOf(t.paidDate||t.date)===m)r.cin+=linesTot(t);
     }else if(t.kind==="buy"&&inM){r.buy+=linesTot(t);r.nBuy++}
@@ -466,10 +480,10 @@ function custList(){
   return custs.slice().sort((a,b)=>(last[b.id]||"").localeCompare(last[a.id]||"")||a.name.localeCompare(b.name,"he"));
 }
 function suppliers(){const seen=new Map();for(const t of txs.filter(t=>t.kind==="buy"&&t.sup).sort(byDateDesc))if(!seen.has(t.sup))seen.set(t.sup,t);return[...seen.keys()]}
-function lastCustPrice(cid,w,ex){if(!cid)return null;for(const t of txs.filter(t=>t.kind==="sale"&&t.cust===cid&&t.id!==ex).sort(byDateDesc)){const l=t.lines.find(l=>l.w===w);if(l)return l.p}return null}
-function lastBuyPrice(w,sup,ex){const bs=txs.filter(t=>t.kind==="buy"&&t.id!==ex).sort(byDateDesc);
-  if(sup)for(const t of bs)if(t.sup===sup){const l=t.lines.find(l=>l.w===w);if(l)return l.p}
-  for(const t of bs){const l=t.lines.find(l=>l.w===w);if(l)return l.p}return null}
+function lastCustLine(cid,w,ex){if(!cid)return null;for(const t of txs.filter(t=>t.kind==="sale"&&t.cust===cid&&t.id!==ex).sort(byDateDesc)){const l=t.lines.find(l=>l.w===w);if(l)return l}return null}
+function lastBuyLine(w,sup,ex){const bs=txs.filter(t=>t.kind==="buy"&&t.id!==ex).sort(byDateDesc);
+  if(sup)for(const t of bs)if(t.sup===sup){const l=t.lines.find(l=>l.w===w);if(l)return l}
+  for(const t of bs){const l=t.lines.find(l=>l.w===w);if(l)return l}return null}
 const custName=id=>custById(id)?.name||"";
 
 /* ---------- theme ---------- */
@@ -559,15 +573,17 @@ function askDelete(t){
 function txPage(t,preset){
   const ed=!!t;preset=preset||{};
   const f=t?JSON.parse(JSON.stringify(t)):{kind:preset.kind||"sale",date:todayStr(),lines:[],cust:preset.cust||null,sup:"",paid:true,pay:null,note:"",amount:null,cat:null};
-  f.lines=f.lines||[];f.note=f.note||"";f.sup=f.sup||"";f.custName=f.cust?custName(f.cust):"";f.phone="";
+  f.lines=(f.lines||[]).map(toForm);f.note=f.note||"";f.sup=f.sup||"";f.custName=f.cust?custName(f.cust):"";f.phone="";
   const exId=ed?t.id:null;
   const cm=compute(exId);
-  if(preset.repeat&&f.cust){const last=cstats(f.cust).last;if(last)f.lines=last.lines.map(l=>({w:l.w,q:l.q,p:l.p}))}
-  const ensureLine=()=>{if(f.kind!=="exp"&&!f.lines.length)f.lines.push({w:null,q:1,p:null})};ensureLine();
+  if(preset.repeat&&f.cust){const last=cstats(f.cust).last;if(last)f.lines=last.lines.map(toForm)}
+  const newLine=()=>({w:null,u:"b",cs:6,q:1,p:null});
+  const bq=l=>(l.q||0)*(l.u==="c"?(l.cs||0):1);
+  const ensureLine=()=>{if(f.kind!=="exp"&&!f.lines.length)f.lines.push(newLine())};ensureLine();
   let err,updSum=()=>{};
   const prefill=l=>{if(!l.w||l.p!=null)return;
-    if(f.kind==="sale"){const lp=lastCustPrice(f.cust,l.w,exId);l.p=lp!=null?lp:(wineById(l.w)?.price||null)}
-    else l.p=lastBuyPrice(l.w,f.sup.trim(),exId)};
+    if(f.kind==="sale"){const ll=lastCustLine(f.cust,l.w,exId);if(ll)l.p=unitPrice(ll,l.u,l.cs);else{const wp=wineById(l.w)?.price;l.p=wp?(l.u==="c"?r2(wp*l.cs):wp):null}}
+    else l.p=unitPrice(lastBuyLine(l.w,f.sup.trim(),exId),l.u,l.cs)};
   const E=m=>{err.textContent=m;err.hidden=false;sBody.scrollTop=0};
 
   function custSec(){
@@ -591,7 +607,7 @@ function txPage(t,preset){
         ref.after(b);ref=b;sugs.push(b)}
     }
     function pick(c){f.cust=c.id;f.custName=c.name;inp.value=c.name;inp.blur();
-      for(const l of f.lines){if(l.w){const lp=lastCustPrice(c.id,l.w,exId);if(lp!=null)l.p=lp}}
+      for(const l of f.lines){if(l.w){const lp=unitPrice(lastCustLine(c.id,l.w,exId),l.u,l.cs);if(lp!=null)l.p=lp}}
       rerender()}
     inp.addEventListener("input",()=>{f.custName=inp.value;if(f.cust&&custName(f.cust)!==inp.value)f.cust=null;upd()});
     inp.addEventListener("focus",upd);inp.addEventListener("blur",()=>setTimeout(upd,0));
@@ -600,7 +616,7 @@ function txPage(t,preset){
     if(known()){const st=cstats(f.cust,exId);
       if(st.last){
         g.append(h("div",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t2"},"בפעם הקודמת · "+shortDate(st.last.date)),h("span",{class:"t1 wrap"},linesText(st.last.lines))),nm(linesTot(st.last),false,"val")));
-        g.append(h("button",{class:"cell tint withicon",onclick:()=>{f.lines=st.last.lines.map(l=>({w:l.w,q:l.q,p:l.p}));rerender()}},h("span",{class:"sq b-cust",html:icon("repeat")}),"הזמנה חוזרת"));
+        g.append(h("button",{class:"cell tint withicon",onclick:()=>{f.lines=st.last.lines.map(toForm);rerender()}},h("span",{class:"sq b-cust",html:icon("repeat")}),"הזמנה חוזרת"));
       }
       if(st.debt>0.004)g.append(h("div",{class:"cell"},h("span",{class:"grow"},"חוב פתוח"),nm(st.debt,false,"val strong")));
       kids.push(sf(st.n?("לקוח קבוע · "+st.n+" הזמנות. המחירים מולאו לפי מה שהוא שילם בפעם האחרונה."):"לקוח שמור."));
@@ -614,34 +630,44 @@ function txPage(t,preset){
     const top=h("div",{class:"cell withicon"},sq("buy"),inp);const g=grp(top);const sugs=[];
     function upd(){sugs.forEach(n=>n.remove());sugs.length=0;if(document.activeElement!==inp)return;
       const q=inp.value.trim().toLowerCase();let list=suppliers();if(q)list=list.filter(s=>s.toLowerCase().includes(q)&&s!==inp.value.trim());
-      let ref=top;for(const s of list.slice(0,5)){const b=h("button",{class:"cell withicon",onpointerdown:e=>e.preventDefault(),onclick:()=>{f.sup=s;inp.value=s;inp.blur();for(const l of f.lines){if(l.w){const lp=lastBuyPrice(l.w,s,exId);if(lp!=null)l.p=lp}}rerender()}},sq("gray","buy"),h("span",{class:"grow"},h("span",{class:"t1"},s)),disc());ref.after(b);ref=b;sugs.push(b)}}
+      let ref=top;for(const s of list.slice(0,5)){const b=h("button",{class:"cell withicon",onpointerdown:e=>e.preventDefault(),onclick:()=>{f.sup=s;inp.value=s;inp.blur();for(const l of f.lines){if(l.w){const lp=unitPrice(lastBuyLine(l.w,s,exId),l.u,l.cs);if(lp!=null)l.p=lp}}rerender()}},sq("gray","buy"),h("span",{class:"grow"},h("span",{class:"t1"},s)),disc());ref.after(b);ref=b;sugs.push(b)}}
     inp.addEventListener("input",()=>{f.sup=inp.value;upd()});inp.addEventListener("focus",upd);inp.addEventListener("blur",()=>setTimeout(upd,0));
     return sec("ספק",g);
   }
 
   function lineSec(l,i){
-    const w=wineById(l.w),sale=f.kind==="sale";
-    const qIn=h("input",{class:"numin short",inputmode:"numeric",value:l.q??"","aria-label":"כמות"});
-    const pIn=h("input",{class:"numin",inputmode:"decimal",placeholder:"0.00",value:l.p==null?"":String(l.p),"aria-label":"מחיר לבקבוק"});
+    const w=wineById(l.w),sale=f.kind==="sale",isC=l.u==="c";
+    const qIn=h("input",{class:"numin short",inputmode:"numeric",value:l.q??"","aria-label":isC?"מספר ארגזים":"מספר בקבוקים"});
+    const pIn=h("input",{class:"numin",inputmode:"decimal",placeholder:"0.00",value:l.p==null?"":String(l.p),"aria-label":isC?"מחיר לארגז":"מחיר לבקבוק"});
+    const csIn=h("input",{class:"numin short",inputmode:"numeric",value:l.cs??"","aria-label":"בקבוקים בארגז"});
     const minus=h("button",{"aria-label":"פחות"},"−"),plus=h("button",{"aria-label":"עוד"},"+");
-    const lineTot=h("span",{class:"val num"});
+    const lineTot=h("span",{class:"val num"}),perB=h("span",{class:"t2"});
     const stockT=h("span",{class:"t2"});
     const sync=()=>{minus.disabled=!(l.q>1);
       lineTot.textContent=(l.q>0&&l.p!=null)?money(l.q*l.p):"—";
-      if(w){const s=cm.stock(w.id);const parts=["במלאי: "+NI.format(s)];
-        if(sale){const a=cm.avg(w.id);if(a>0)parts.push("עלות "+money(a))}else{const lb=lastBuyPrice(w.id,f.sup.trim(),exId);if(lb!=null)parts.push("קנייה אחרונה "+money(lb))}
-        stockT.textContent=parts.join(" · ");stockT.classList.toggle("bad",sale&&s<(l.q||0))}
+      perB.textContent=isC&&l.q>0&&l.cs>0?(bottles(bq(l))+(l.p!=null?" · "+money(l.p/l.cs)+" לבקבוק":"")):"";
+      if(w){const s=cm.stock(w.id);const parts=["במלאי: "+NI.format(s)+(w.cs>1&&s>=w.cs?" ("+NI.format(Math.floor(s/w.cs))+" ארגזים)":"")];
+        if(sale){const a=cm.avg(w.id);if(a>0)parts.push("עלות "+money(a)+" לבקבוק")}else{const lb=lastBuyLine(w.id,f.sup.trim(),exId);if(lb)parts.push("קנייה אחרונה "+money(unitPrice(lb,l.u,l.cs))+(isC?" לארגז":""))}
+        stockT.textContent=parts.join(" · ");stockT.classList.toggle("bad",sale&&s<bq(l))}
       updSum()};
     qIn.addEventListener("input",()=>{const n=parseInt(qIn.value,10);l.q=n>0?n:null;sync()});
     pIn.addEventListener("input",()=>{const n=pnum(pIn.value);l.p=isNaN(n)?null:n;sync()});
+    csIn.addEventListener("input",()=>{const n=parseInt(csIn.value,10);l.cs=n>0?n:null;sync()});
     minus.addEventListener("click",()=>{l.q=Math.max(1,(l.q||1)-1);qIn.value=l.q;sync()});
     plus.addEventListener("click",()=>{l.q=(l.q||0)+1;qIn.value=l.q;sync()});
+    const setUnit=u=>{if(l.u===u)return;
+      if(!(l.cs>0))l.cs=l.w?defCs(l.w):6;
+      if(l.p!=null)l.p=u==="c"?r2(l.p*l.cs):r2(l.p/l.cs);
+      l.u=u;rerender()};
+    const useg=h("div",{class:"seg"},h("button",{"aria-pressed":String(!isC),onclick:()=>setUnit("b")},"בקבוקים"),h("button",{"aria-pressed":String(isC),onclick:()=>setUnit("c")},"ארגזים"));
     const g=grp(
-      h("button",{class:"cell withicon",onclick:()=>push(winePicker(l.w,id=>{if(l.w!==id){l.w=id;l.p=null;prefill(l)}},cm))},sq("wine"),
+      h("button",{class:"cell withicon",onclick:()=>push(winePicker(l.w,id=>{if(l.w!==id){l.w=id;l.cs=defCs(id);l.p=null;prefill(l)}},cm))},sq("wine"),
         h("span",{class:"grow"},h("span",{class:"t1"+(w?"":" ph")},w?wineLabel(w):"בחירת יין"),w&&stockT),disc()),
-      h("div",{class:"cell"},h("span",{class:"grow"},"כמות"),qIn,h("span",{class:"stepper"},minus,h("i"),plus)),
-      h("label",{class:"cell"},h("span",{class:"grow"},sale?"מחיר מכירה לבקבוק":"מחיר קנייה לבקבוק"),pIn),
-      h("div",{class:"cell"},h("span",{class:"grow t2",style:"font-size:15px"},"סה״כ"),lineTot),
+      h("div",{class:"cell"},useg),
+      isC&&h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"בקבוקים בארגז"),h("span",{class:"t2"},"כמה בקבוקים יש בכל ארגז")),csIn),
+      h("div",{class:"cell"},h("span",{class:"grow"},isC?"כמות ארגזים":"כמות"),qIn,h("span",{class:"stepper"},minus,h("i"),plus)),
+      h("label",{class:"cell"},h("span",{class:"grow"},(sale?"מחיר מכירה ":"מחיר קנייה ")+(isC?"לארגז":"לבקבוק")),pIn),
+      h("div",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t2",style:"font-size:15px"},"סה״כ"),isC&&perB),lineTot),
       f.lines.length>1&&h("button",{class:"cell center destructive",onclick:()=>{f.lines.splice(i,1);rerender()}},"הסרת היין מהרשימה"));
     l._sync=sync;
     return sec(f.lines.length>1?"יין "+(i+1):"יין",g);
@@ -650,7 +676,7 @@ function txPage(t,preset){
   function sumSec(){
     const tot=h("span",{class:"val strong num"}),cost=h("span",{class:"val num"}),prof=h("span",{class:"val num"}),margin=h("span",{class:"t2"});
     const sale=f.kind==="sale";
-    updSum=()=>{let T=0,Cc=0,miss=false;for(const l of f.lines){if(!(l.q>0)||l.p==null){continue}T+=l.q*l.p;if(l.w){Cc+=l.q*cm.avg(l.w);if(!cm.hasCost(l.w))miss=true}}
+    updSum=()=>{let T=0,Cc=0,miss=false;for(const l of f.lines){if(!(l.q>0)||l.p==null){continue}T+=l.q*l.p;if(l.w){Cc+=bq(l)*cm.avg(l.w);if(!cm.hasCost(l.w))miss=true}}
       tot.textContent=money(T);
       if(sale){cost.textContent=money(Cc);prof.textContent=money(T-Cc);prof.className="val num "+(T-Cc>=0?"pos":"neg");
         margin.textContent=miss?"ליין אחד או יותר עוד לא נרשמה קנייה, ולכן העלות חלקית":("שולי רווח "+pct(T-Cc,T))}};
@@ -659,7 +685,7 @@ function txPage(t,preset){
       h("div",{class:"cell withicon"},sq("cap"),h("span",{class:"grow"},h("span",{class:"t1"},"חוזר לקרן"),h("span",{class:"t2"},"מה ששילמתם על הבקבוקים")),cost),
       h("div",{class:"cell withicon"},sq("prof"),h("span",{class:"grow"},h("span",{class:"t1"},"רווח"),margin),prof))}
     return h("div",{class:"pagewrap"},
-      sec(null,grp(h("button",{class:"cell tint",onclick:()=>{f.lines.push({w:null,q:1,p:null});rerender()}},"+ הוספת יין נוסף"))),
+      sec(null,grp(h("button",{class:"cell tint",onclick:()=>{f.lines.push(newLine());rerender()}},"+ הוספת יין נוסף"))),
       sec("סיכום",g,sale&&sf("העלות מחושבת לפי ממוצע מחירי הקנייה של כל יין במלאי.")));
   }
 
@@ -692,8 +718,9 @@ function txPage(t,preset){
       if(!ls.some(l=>l.w))return E("בחרו לפחות יין אחד.");
       for(const l of ls){if(!l.w)return E("בחרו יין בכל שורה, או הסירו את השורה הריקה.");
         if(!(Number.isInteger(l.q)&&l.q>0))return E("הזינו כמות לכל יין.");
+        if(l.u==="c"&&!(Number.isInteger(l.cs)&&l.cs>0))return E("הזינו כמה בקבוקים יש בארגז.");
         if(l.p==null||!(l.p>=0))return E("הזינו מחיר לכל יין.")}
-      out.lines=ls.map(l=>({w:l.w,q:l.q,p:r2(l.p)}));out.pay=f.pay||null;
+      out.lines=ls.map(fromForm);out.pay=f.pay||null;
       if(f.kind==="sale"){
         let cid=f.cust;const name=f.custName.trim();
         if(!cid&&name){const ex=custs.find(c=>c.name.trim().toLowerCase()===name.toLowerCase());
@@ -703,6 +730,7 @@ function txPage(t,preset){
       }else out.sup=f.sup.trim();
     }
     const s=snapshot();
+    for(const l of f.lines)if(l.u==="c"&&l.w&&l.cs>0){const x=wineById(l.w);if(x&&x.cs!==l.cs)wines=wines.map(y=>y.id===l.w?{...y,cs:l.cs}:y)}
     if(newCust)custs.push(newCust);
     if(ed)txs=txs.map(x=>x.id===t.id?out:x);else txs.push(out);
     if(!save()){const o=JSON.parse(s);wines=o.wines;custs=o.custs;txs=o.txs;return E(saveFailMsg())}
@@ -747,16 +775,16 @@ function winePicker(sel,onPick,cm){let q="";return{title:"בחירת יין",ren
     list,!wines.length&&sf("עוד לא הוספתם יינות. הוסיפו את היין הראשון, והוא יישמר לפעמים הבאות."))}}}
 
 function wineStats(id){let sq_=0,rev=0,prof=0,bq=0,bv=0;
-  for(const t of txs){if(t.kind==="sale")t.lines.forEach((l,i)=>{if(l.w===id){sq_+=l.q;rev+=l.q*l.p;prof+=l.q*l.p-((C.cost[t.id]||[])[i]||0)}});
-    else if(t.kind==="buy")for(const l of t.lines)if(l.w===id){bq+=l.q;bv+=l.q*l.p}}
+  for(const t of txs){if(t.kind==="sale")t.lines.forEach((l,i)=>{if(l.w===id){sq_+=l.q;rev+=lt(l);prof+=lt(l)-((C.cost[t.id]||[])[i]||0)}});
+    else if(t.kind==="buy")for(const l of t.lines)if(l.w===id){bq+=l.q;bv+=lt(l)}}
   return{sold:sq_,rev,prof,bq,bv,stock:C.stock(id),avg:C.avg(id),value:Math.max(0,C.st[id]?.v||0)}}
 
 function winePage(w,onSaved){
-  const ed=!!w;const f=w?{...w}:{name:"",winery:"",type:"red",vintage:"",price:null,note:""};let err;
+  const ed=!!w;const f=w?{...w}:{name:"",winery:"",type:"red",vintage:"",price:null,cs:6,note:""};let err;
   function submit(){
     const name=(f.name||"").trim();if(!name){err.textContent="הזינו שם ליין.";err.hidden=false;sBody.scrollTop=0;return}
     const vin=String(f.vintage||"").trim();if(vin&&!/^\d{4}$/.test(vin)){err.textContent="שנת הבציר צריכה להיות בת ארבע ספרות.";err.hidden=false;sBody.scrollTop=0;return}
-    const out={id:ed?w.id:uid("w"),name,winery:(f.winery||"").trim(),type:f.type||"other",vintage:vin,price:f.price>0?r2(f.price):null,note:(f.note||"").trim(),created:ed?w.created:Date.now()};
+    const out={id:ed?w.id:uid("w"),name,winery:(f.winery||"").trim(),type:f.type||"other",vintage:vin,price:f.price>0?r2(f.price):null,cs:Number.isInteger(+f.cs)&&+f.cs>0?+f.cs:6,note:(f.note||"").trim(),created:ed?w.created:Date.now()};
     const s=snapshot();if(ed)wines=wines.map(x=>x.id===w.id?out:x);else wines.push(out);
     if(!save()){restoreSnap(s);err.textContent=saveFailMsg();err.hidden=false;return}
     refreshAll();if(onSaved)onSaved(out);else pop();
@@ -776,6 +804,7 @@ function winePage(w,onSaved){
       h("div",{class:"cell"},h("input",{class:"text",placeholder:"יקב",value:f.winery,oninput:e=>{f.winery=e.target.value}})),
       h("label",{class:"cell"},h("span",{class:"grow"},"שנת בציר"),h("input",{class:"numin short",inputmode:"numeric",placeholder:"—",value:f.vintage||"",oninput:e=>{f.vintage=e.target.value}})),
       h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"מחיר מכירה רגיל"),h("span",{class:"t2"},"ימולא אוטומטית במכירה")),h("input",{class:"numin",inputmode:"decimal",placeholder:"0.00",value:f.price==null?"":String(f.price),oninput:e=>{const n=pnum(e.target.value);f.price=isNaN(n)?null:n}})),
+      h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"בקבוקים בארגז"),h("span",{class:"t2"},"ימולא אוטומטית כשבוחרים ארגזים")),h("input",{class:"numin short",inputmode:"numeric",value:f.cs||6,oninput:e=>{f.cs=parseInt(e.target.value,10)}})),
       h("div",{class:"cell"},h("input",{class:"text",placeholder:"הערה",value:f.note||"",oninput:e=>{f.note=e.target.value}}))
     )),sec("סוג",(()=>{const s=h("div",{class:"seg dense"},...Object.entries(WTYPES).map(([k,l])=>h("button",{"data-ty":k,onclick:()=>{f.type=k;setSeg(s,"ty",k)}},l)));setSeg(s,"ty",f.type);return s})()));
     if(ed){const used=txs.some(t=>t.lines&&t.lines.some(l=>l.w===w.id));
@@ -1188,7 +1217,7 @@ function settingsPage(){return{title:"הגדרות",render(){
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
       sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
     sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" יינות · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 3"))}}}
+    sf("המרתף · גרסה 4"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
@@ -1207,7 +1236,7 @@ const isD=s=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s);
 const str=v=>typeof v==="string"?v:"";
 function cleanBackup(o){
   if(!o||o.app!=="cellar"||!Array.isArray(o.wines)||!Array.isArray(o.txs))return null;
-  const W=o.wines.filter(w=>w&&typeof w.id==="string"&&str(w.name).trim()).map(w=>({id:w.id,name:w.name.trim(),winery:str(w.winery),type:WTYPES[w.type]?w.type:"other",vintage:str(w.vintage),price:+w.price>0?r2(+w.price):null,note:str(w.note),created:+w.created||Date.now()}));
+  const W=o.wines.filter(w=>w&&typeof w.id==="string"&&str(w.name).trim()).map(w=>({id:w.id,name:w.name.trim(),winery:str(w.winery),type:WTYPES[w.type]?w.type:"other",vintage:str(w.vintage),price:+w.price>0?r2(+w.price):null,cs:Number.isInteger(+w.cs)&&+w.cs>0?+w.cs:6,note:str(w.note),created:+w.created||Date.now()}));
   const wid=new Set(W.map(w=>w.id));
   const Cs=(o.customers||[]).filter(c=>c&&typeof c.id==="string"&&str(c.name).trim()).map(c=>({id:c.id,name:c.name.trim(),phone:str(c.phone),note:str(c.note),created:+c.created||Date.now()}));
   const cid=new Set(Cs.map(c=>c.id));
@@ -1215,7 +1244,7 @@ function cleanBackup(o){
   for(const t of o.txs){if(!t||typeof t.id!=="string"||!KN[t.kind]||!isD(t.date))continue;
     const b={id:t.id,kind:t.kind,date:t.date,created:+t.created||Date.now(),note:str(t.note),pay:PAYS[t.pay]?t.pay:null};
     if(t.kind==="exp"){if(!(+t.amount>0))continue;b.amount=r2(+t.amount);b.cat=EXPCATS.includes(t.cat)?t.cat:"אחר"}
-    else{if(!Array.isArray(t.lines))continue;const ls=t.lines.filter(l=>l&&wid.has(l.w)&&Number.isInteger(+l.q)&&+l.q>0&&+l.p>=0).map(l=>({w:l.w,q:+l.q,p:r2(+l.p)}));if(!ls.length)continue;b.lines=ls;
+    else{if(!Array.isArray(t.lines))continue;const ls=t.lines.filter(l=>l&&wid.has(l.w)&&Number.isInteger(+l.q)&&+l.q>0&&+l.p>=0).map(l=>{const o={w:l.w,q:+l.q,p:+(+l.p).toFixed(4)};if(l.u==="c"&&Number.isInteger(+l.cs)&&+l.cs>0&&+l.cp>=0){o.u="c";o.cs=+l.cs;o.cp=r2(+l.cp)}return o});if(!ls.length)continue;b.lines=ls;
       if(t.kind==="sale"){b.cust=cid.has(t.cust)?t.cust:null;b.paid=!!t.paid;if(b.paid&&isD(t.paidDate))b.paidDate=t.paidDate}else b.sup=str(t.sup)}
     T.push(b)}
   return{wines:W,custs:Cs,txs:T};
@@ -1283,10 +1312,10 @@ function xlsxSheets(){
   const S=[];
   S.push({name:"סיכום חודשי",cols:[["חודש",16,"s"],["מכירות",14,"m"],["עלות הסחורה שנמכרה (קרן)",24,"m"],["רווח גולמי",14,"m"],["שולי רווח",11,"s"],["הוצאות",14,"m"],["רווח נקי",14,"m"],["קניות סחורה",14,"m"],["נכנס לקופה",14,"m"],["יצא מהקופה",14,"m"],["תזרים נטו",14,"m"],["בקבוקים שנמכרו",15,"i"]],
     rows:months.map(m=>{const r=monthSum(m);return[monthLabel(m),r.rev,r.cogs,r.gp,pct(r.gp,r.rev),r.exp,r.net,r.buy,r.cin,r.cout,r.flow,r.bottles]})});
-  const sales=[];for(const t of asc)if(t.kind==="sale")t.lines.forEach((l,i)=>{const c=(C.cost[t.id]||[])[i]||0;sales.push([t.date,custName(t.cust),wineLabel(wineById(l.w)),l.q,l.p,l.q*l.p,c,l.q*l.p-c,t.paid?"כן":"לא",PAYS[t.pay]||"",t.note])});
-  S.push({name:"מכירות",cols:[["תאריך",12,"d"],["לקוח",18,"s"],["יין",26,"s"],["כמות",8,"i"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["עלות (קרן)",13,"m"],["רווח",13,"m"],["שולם",8,"s"],["תשלום",14,"s"],["הערה",24,"s"]],rows:sales});
-  const buys=[];for(const t of asc)if(t.kind==="buy")for(const l of t.lines)buys.push([t.date,t.sup,wineLabel(wineById(l.w)),l.q,l.p,l.q*l.p,PAYS[t.pay]||"",t.note]);
-  S.push({name:"קניות",cols:[["תאריך",12,"d"],["ספק",18,"s"],["יין",26,"s"],["כמות",8,"i"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["תשלום",14,"s"],["הערה",24,"s"]],rows:buys});
+  const sales=[];for(const t of asc)if(t.kind==="sale")t.lines.forEach((l,i)=>{const c=(C.cost[t.id]||[])[i]||0;sales.push([t.date,custName(t.cust),wineLabel(wineById(l.w)),isCase(l)?casesN(l.q/l.cs)+" של "+l.cs:"",l.q,isCase(l)?l.cp:null,lt(l)/l.q,lt(l),c,lt(l)-c,t.paid?"כן":"לא",PAYS[t.pay]||"",t.note])});
+  S.push({name:"מכירות",cols:[["תאריך",12,"d"],["לקוח",18,"s"],["יין",26,"s"],["ארגזים",14,"s"],["בקבוקים",9,"i"],["מחיר לארגז",12,"m"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["עלות (קרן)",13,"m"],["רווח",13,"m"],["שולם",8,"s"],["תשלום",14,"s"],["הערה",24,"s"]],rows:sales});
+  const buys=[];for(const t of asc)if(t.kind==="buy")for(const l of t.lines)buys.push([t.date,t.sup,wineLabel(wineById(l.w)),isCase(l)?casesN(l.q/l.cs)+" של "+l.cs:"",l.q,isCase(l)?l.cp:null,lt(l)/l.q,lt(l),PAYS[t.pay]||"",t.note]);
+  S.push({name:"קניות",cols:[["תאריך",12,"d"],["ספק",18,"s"],["יין",26,"s"],["ארגזים",14,"s"],["בקבוקים",9,"i"],["מחיר לארגז",12,"m"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["תשלום",14,"s"],["הערה",24,"s"]],rows:buys});
   S.push({name:"הוצאות",cols:[["תאריך",12,"d"],["קטגוריה",18,"s"],["סכום",13,"m"],["תשלום",14,"s"],["הערה",28,"s"]],rows:asc.filter(t=>t.kind==="exp").map(t=>[t.date,t.cat,t.amount,PAYS[t.pay]||"",t.note])});
   S.push({name:"מלאי",cols:[["יין",26,"s"],["יקב",16,"s"],["סוג",9,"s"],["בציר",7,"s"],["במלאי",8,"i"],["עלות ממוצעת",13,"m"],["קרן במלאי",13,"m"],["מחיר מכירה",13,"m"],["שווי במחיר מכירה",16,"m"],["נמכרו",8,"i"],["רווח מהיין",13,"m"]],
     rows:wines.slice().sort((a,b)=>a.name.localeCompare(b.name,"he")).map(w=>{const s=wineStats(w.id);return[w.name,w.winery,WTYPES[w.type]||"",w.vintage,s.stock,s.avg,s.value,w.price,w.price&&s.stock>0?w.price*s.stock:null,s.sold,s.prof]})});
@@ -1342,7 +1371,10 @@ function sampleData(){
 function render(){
   C=compute();
   const now=monthOf(todayStr());
-  const multi=accounts.length>1||cloudOn();$("acctBtn").hidden=!multi||!acc;$("acctName").textContent=accName();
+  const multi=accounts.length>1||cloudOn();$("acctName").textContent=accName();
+  const useSeg=!!acc&&accounts.length>=2&&accounts.length<=4;
+  $("acctBtn").hidden=!acc||useSeg;$("acctSeg").hidden=!useSeg;
+  if(useSeg)$("acctSeg").replaceChildren(...accounts.map(a=>h("button",{"aria-pressed":String(a.id===acc),title:a.name,onclick:()=>{if(a.id!==acc){switchAccount(a.id);banner("עברתם לחשבון "+a.name)}}},a.name)));
   const noAcc=cloudOn()&&!acc;$("saleBtn").parentElement.hidden=noAcc;$("addBtn").hidden=noAcc;
   if(cloud)renderSync();
   $("navTitle").textContent=multi?accName():"המרתף";document.title=multi?"המרתף · "+accName():"המרתף";
@@ -1435,9 +1467,11 @@ $("prevM").addEventListener("click",()=>{cur=addMonth(cur,-1);render()});
 $("nextM").addEventListener("click",()=>{cur=addMonth(cur,1);render()});
 $("saleBtn").addEventListener("click",()=>openSheet(txPage(null,{kind:"sale"})));
 $("setBtn").addEventListener("click",()=>openSheet(settingsPage()));
-$("acctBtn").addEventListener("click",()=>actionSheet({title:"מעבר לחשבון",buttons:[
+$("acctBtn").addEventListener("click",()=>actionSheet({title:accounts.length>1?"מעבר לחשבון":accName(),buttons:[
   ...accounts.filter(a=>a.id!==acc).map(a=>({label:a.name,fn:()=>{switchAccount(a.id);banner("עברתם לחשבון "+a.name)}})),
-  {label:"ניהול חשבונות",fn:()=>{openSheet(settingsPage());push(accountsPage())}}]}));
+  {label:"הוספת חשבון",fn:()=>{openSheet(accountsPage());push(accountForm(null))}},
+  {label:"ניהול חשבונות ושיתוף",fn:()=>openSheet(accountsPage())}]}));
+$("acctNav").addEventListener("click",()=>openSheet(accountsPage()));
 $("addBtn").addEventListener("click",()=>actionSheet({buttons:[
   {label:"מכירה",fn:()=>openSheet(txPage(null,{kind:"sale"}))},
   {label:"קניית סחורה",fn:()=>openSheet(txPage(null,{kind:"buy"}))},
