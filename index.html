@@ -482,7 +482,7 @@ function monthSum(m){
         t.lines.forEach((l,i)=>{const o=r.wines[l.w]||(r.wines[l.w]={rev:0,prof:0,q:0});const lr=lt(l),lc=(C.cost[t.id]||[])[i]||0;o.rev+=lr;o.prof+=lr-lc;o.q+=l.q;r.bottles+=l.q});
         const ck=t.cust||"_";const o=r.custs[ck]||(r.custs[ck]={rev:0,prof:0,n:0});o.rev+=rv;o.prof+=rv-cs;o.n++}
       if(t.paid&&monthOf(t.paidDate||t.date)===m)r.cin+=linesTot(t);
-    }else if(t.kind==="buy"&&inM){r.buy+=linesTot(t);r.nBuy++}
+    }else if(t.kind==="buy"&&inM&&!t.open){r.buy+=linesTot(t);r.nBuy++}
     else if(t.kind==="exp"&&inM){r.exp+=t.amount;r.nExp++;r.cats[t.cat]=(r.cats[t.cat]||0)+t.amount}
   }
   r.gp=r.rev-r.cogs;r.net=r.gp-r.exp;r.cout=r.buy+r.exp;r.flow=r.cin-r.cout;return r;
@@ -594,6 +594,8 @@ const undoTo=s=>()=>restoreSnap(s);
 function txWhat(t){const s=t.kind==="sale"?(custName(t.cust)||"מכירה"):t.kind==="buy"?(t.sup||"קניית סחורה"):t.cat;
   return [nm(t.kind==="sale"?txAmt(t):-txAmt(t),t.kind==="sale"),"  ·  "+s+" · "+shortDate(t.date)]}
 function askDelete(t){
+  if(t.open)return actionSheet({title:"למחוק את המלאי הקיים?",what:[bottles(linesQ(t))+" · ",nm(linesTot(t))],msg:"הבקבוקים יירדו מהמלאי ומהקרן.",buttons:[{label:"מחיקה",destructive:true,fn:()=>{
+    const s=snapshot();txs=txs.filter(x=>x.id!==t.id);save();if(stack.length){stack.length>1?pop():closeSheets()}refreshAll();banner("המלאי הקיים נמחק",undoTo(s))}}]});
   actionSheet({title:"למחוק את ה"+KN[t.kind]+"?",what:txWhat(t),buttons:[{label:"מחיקת "+KN[t.kind],destructive:true,fn:()=>{
     const s=snapshot();txs=txs.filter(x=>x.id!==t.id);save();
     if(stack.length){stack.length>1?pop():closeSheets()}
@@ -603,7 +605,10 @@ function askDelete(t){
 /* ---------- tx form ---------- */
 function txPage(t,preset){
   const ed=!!t;preset=preset||{};
-  const f=t?JSON.parse(JSON.stringify(t)):{kind:preset.kind||"sale",date:todayStr(),lines:[],cust:preset.cust||null,sup:"",paid:true,pay:null,note:"",amount:null,cat:null};
+  const f=t?JSON.parse(JSON.stringify(t)):{kind:preset.kind||"sale",date:todayStr(),lines:[],cust:preset.cust||null,sup:"",paid:true,pay:null,note:"",amount:null,cat:null,open:!!preset.open};
+  f.open=!!f.open;
+  /* opening stock should come before the first sale, so default to the day before the earliest record */
+  if(!t&&preset.open&&txs.length){const first=txs.reduce((m,x)=>x.date<m?x.date:m,todayStr());if(first<=todayStr())f.date=addDays(first,-1)}
   f.lines=(f.lines||[]).map(toForm);f.note=f.note||"";f.sup=f.sup||"";f.custName=f.cust?custName(f.cust):"";f.phone="";
   const exId=ed?t.id:null;
   const cm=compute(exId);
@@ -697,7 +702,7 @@ function txPage(t,preset){
       h("div",{class:"cell"},useg),
       isC&&h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"בקבוקים בארגז"),h("span",{class:"t2"},"כמה בקבוקים יש בכל ארגז")),csIn),
       h("div",{class:"cell"},h("span",{class:"grow"},isC?"כמות ארגזים":"כמות"),qIn,h("span",{class:"stepper"},minus,h("i"),plus)),
-      h("label",{class:"cell"},h("span",{class:"grow"},(sale?"מחיר מכירה ":"מחיר קנייה ")+(isC?"לארגז":"לבקבוק")),pIn),
+      h("label",{class:"cell"},h("span",{class:"grow"},(sale?"מחיר מכירה ":f.open?"עלות ":"מחיר קנייה ")+(isC?"לארגז":"לבקבוק")),pIn),
       h("div",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t2",style:"font-size:15px"},"סה״כ"),isC&&perB),lineTot),
       f.lines.length>1&&h("button",{class:"cell center destructive",onclick:()=>{f.lines.splice(i,1);rerender()}},"הסרה מהרשימה"));
     l._sync=sync;
@@ -711,7 +716,7 @@ function txPage(t,preset){
       tot.textContent=money(T);
       if(sale){cost.textContent=money(Cc);prof.textContent=money(T-Cc);prof.className="val num "+(T-Cc>=0?"pos":"neg");
         margin.textContent=miss?"למוצר אחד או יותר עוד לא נרשמה קנייה, ולכן העלות חלקית":("שולי רווח "+pct(T-Cc,T))}};
-    const g=grp(h("div",{class:"cell"},h("span",{class:"grow"},sale?"סה״כ לתשלום":"סה״כ קנייה"),tot));
+    const g=grp(h("div",{class:"cell"},h("span",{class:"grow"},sale?"סה״כ לתשלום":f.open?"שווי המלאי לפי עלות":"סה״כ קנייה"),tot));
     if(sale){g.append(
       h("div",{class:"cell withicon"},sq("cap"),h("span",{class:"grow"},h("span",{class:"t1"},"חוזר לקרן"),h("span",{class:"t2"},"מה ששילמתם על הבקבוקים")),cost),
       h("div",{class:"cell withicon"},sq("prof"),h("span",{class:"grow"},h("span",{class:"t1"},"רווח"),margin),prof))}
@@ -727,13 +732,19 @@ function txPage(t,preset){
       sec(null,grp(h("button",{class:"cell withicon",onclick:()=>push(pickerPage("קטגוריה",EXPCATS.map(c=>[c,c]),f.cat,v=>{f.cat=v}))},sq("exp"),h("span",{class:"grow"},"קטגוריה"),h("span",{class:"val"},f.cat||"בחרו"),disc()))));
   }
 
+  function openSec(){
+    return sec(null,grp(h("label",{class:"cell withicon"},sq("cap","bottle"),h("span",{class:"grow"},h("span",{class:"t1"},"מלאי קיים"),h("span",{class:"t2"},"סחורה שכבר הייתה אצלכם, לא קנייה חדשה")),
+      h("input",{type:"checkbox",class:"switch",role:"switch",checked:f.open,onchange:e=>{f.open=e.target.checked;rerender()}}))),
+      sf(f.open?"הבקבוקים נכנסים למלאי ולקרן לפי העלות שתזינו, כדי שהרווח במכירות יחושב נכון. הם לא נספרים כקנייה של החודש ולא יורדים מהתזרים.":"הדליקו אם זו סחורה שכבר הייתה במלאי לפני שהתחלתם להשתמש באפליקציה."));
+  }
+
   function detailsSec(){
     const g=grp(
-      h("div",{class:"cell"},h("span",{class:"grow"},"תאריך"),h("input",{type:"date",class:"datepill",value:f.date,oninput:e=>{f.date=e.target.value}})),
-      h("button",{class:"cell",onclick:()=>push(pickerPage("אמצעי תשלום",[[null,"לא צוין"],...Object.entries(PAYS)],f.pay||null,v=>{f.pay=v}))},h("span",{class:"grow"},"אמצעי תשלום"),h("span",{class:"val"},PAYS[f.pay]||"לא צוין"),disc()));
+      h("div",{class:"cell"},h("span",{class:"grow"},f.open?"נכון לתאריך":"תאריך"),h("input",{type:"date",class:"datepill",value:f.date,oninput:e=>{f.date=e.target.value}})),
+      !(f.kind==="buy"&&f.open)&&h("button",{class:"cell",onclick:()=>push(pickerPage("אמצעי תשלום",[[null,"לא צוין"],...Object.entries(PAYS)],f.pay||null,v=>{f.pay=v}))},h("span",{class:"grow"},"אמצעי תשלום"),h("span",{class:"val"},PAYS[f.pay]||"לא צוין"),disc()));
     if(f.kind==="sale")g.append(h("label",{class:"cell"},h("span",{class:"grow"},"שולם"),h("input",{type:"checkbox",class:"switch",role:"switch",checked:f.paid,onchange:e=>{f.paid=e.target.checked}})));
     g.append(h("div",{class:"cell"},h("input",{class:"text",placeholder:"הערה",value:f.note,oninput:e=>{f.note=e.target.value}})));
-    return sec("פרטים",g,f.kind==="sale"&&sf("מכירה שלא שולמה תופיע בחובות הלקוחות, ותיכנס לתזרים רק כשתסמנו שהיא שולמה."));
+    return sec("פרטים",g,f.kind==="sale"&&sf("מכירה שלא שולמה תופיע בחובות הלקוחות, ותיכנס לתזרים רק כשתסמנו שהיא שולמה."),f.kind==="buy"&&f.open&&sf("כדאי לבחור תאריך שלפני המכירה הראשונה שרשמתם, כדי שהעלות של כל מכירה תחושב לפי המלאי הזה."));
   }
 
   function submit(){
@@ -758,31 +769,32 @@ function txPage(t,preset){
           if(ex)cid=ex.id;else{newCust={id:uid("c"),name,phone:f.phone.trim(),note:"",created:Date.now()};cid=newCust.id}}
         out.cust=cid||null;out.paid=!!f.paid;
         if(out.paid&&ed){if(t.paid&&t.paidDate)out.paidDate=t.paidDate;else if(!t.paid)out.paidDate=todayStr()}
-      }else out.sup=f.sup.trim();
+      }else if(f.open){out.open=true;out.sup="";out.pay=null}
+      else out.sup=f.sup.trim();
     }
     const s=snapshot();
     for(const l of f.lines)if(l.u==="c"&&l.w&&l.cs>0){const x=wineById(l.w);if(x&&x.cs!==l.cs)wines=wines.map(y=>y.id===l.w?{...y,cs:l.cs}:y)}
     if(newCust)custs.push(newCust);
     if(ed)txs=txs.map(x=>x.id===t.id?out:x);else txs.push(out);
     if(!save()){const o=JSON.parse(s);wines=o.wines;custs=o.custs;txs=o.txs;return E(saveFailMsg())}
-    if(!ed&&monthOf(out.date)!==cur)cur=monthOf(out.date);
+    if(!ed&&!out.open&&monthOf(out.date)!==cur)cur=monthOf(out.date);
     stack.length>1?pop():closeSheets();refreshAll();
     if(newCust)banner("הלקוח "+newCust.name+" נשמר בזיכרון");
   }
 
   return{
-    get title(){return(ed?"עריכת ":"")+KN[f.kind]+(ed?"":" חדשה")},lead:"ביטול",
+    get title(){if(f.kind==="buy"&&f.open)return ed?"עריכת מלאי קיים":"הזנת מלאי קיים";return(ed?"עריכת ":"")+KN[f.kind]+(ed?"":" חדשה")},lead:"ביטול",
     trail:{label:"שמירה",fn:submit},
     render(){
       const W=h("div",{class:"pagewrap"});
       if(!ed){const seg=h("div",{class:"seg"},...Object.entries(KN).map(([k,l])=>h("button",{"data-k":k,"aria-pressed":String(f.kind===k),onclick:()=>{if(f.kind===k)return;f.kind=k;f.lines.forEach(l=>{l.p=null;prefill(l)});ensureLine();rerender()}},l)));W.append(seg)}
       err=h("p",{class:"errline",hidden:true,role:"alert"});W.append(err);
       if(f.kind==="sale")W.append(custSec());
-      if(f.kind==="buy")W.append(supSec());
+      if(f.kind==="buy"){W.append(openSec());if(!f.open)W.append(supSec())}
       if(f.kind==="exp")W.append(expSec());
       else{const sum=sumSec();W.append(...f.lines.map(lineSec),sum)}
       W.append(detailsSec());
-      if(ed)W.append(grp(h("button",{class:"cell center destructive",onclick:()=>askDelete(t)},"מחיקת "+KN[f.kind])));
+      if(ed)W.append(grp(h("button",{class:"cell center destructive",onclick:()=>askDelete(t)},t.open?"מחיקת המלאי הקיים":"מחיקת "+KN[f.kind])));
       for(const l of f.lines)l._sync&&l._sync();updSum();
       return W;
     }};
@@ -872,11 +884,48 @@ function winesPage(){let mode="stock",grpF="all",q="";return{title:"מלאי",tr
       h("span",null,wines.length?"נסו סינון אחר.":"הוסיפו יין או שתייה חריפה, או פשוט רשמו קנייה ראשונה דרך כפתור ה־+."),
       !wines.length&&h("button",{class:"cell tint center",onclick:()=>go(winePage(null))},"הוספת מוצר"))};
   fill();
+  W.append(grp(h("button",{class:"cell tint withicon",onclick:()=>openSheet(txPage(null,{kind:"buy",open:true}))},h("span",{class:"sq b-cap",html:icon("bottle")}),h("span",{class:"grow"},h("span",{class:"t1"},"הזנת מלאי קיים"),h("span",{class:"t2"},"סחורה שכבר אצלכם. לא נספרת כקנייה ולא יורדת מהתזרים")))));
+  const nBuys=txs.filter(t=>t.kind==="buy"&&!t.open).length;
+  if(nBuys)W.append(grp(h("button",{class:"cell withicon",onclick:()=>openSheet(convertPage())},sq("buy"),h("span",{class:"grow"},h("span",{class:"t1"},"הפיכת קניות קיימות למלאי קיים"),h("span",{class:"t2"},nBuys+(nBuys===1?" קנייה רשומה":" קניות רשומות")+" · בלי להזין מחדש")),disc())));
+  const openTx=txs.filter(t=>t.kind==="buy"&&t.open);
+  if(openTx.length)W.append(sf("נרשם מלאי קיים בשווי "+money(openTx.reduce((a,t)=>a+linesTot(t),0))+" ("+bottles(openTx.reduce((a,t)=>a+linesQ(t),0))+"). את הרישום אפשר לערוך מרשימת התנועות במסך הבית."));
   W.append(gseg,seg);
   if(wines.length>6)W.append(grp(h("div",{class:"cell withicon"},h("span",{class:"sq b-gray",html:icon("search")}),h("input",{class:"text",type:"search",placeholder:"חיפוש מוצר",value:q,oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}}))));
   W.append(box,emptyEl,sf("המספר בצד הוא כמות הבקבוקים במלאי. העלות היא ממוצע מחירי הקנייה של הבקבוקים שנשארו."));
   if(cap.noPrice)W.append(sf("ל־"+cap.noPrice+" מוצרים במלאי אין מחיר מכירה רגיל, ולכן השווי שלהם מחושב לפי העלות."));
   return W}}}
+
+/* ---------- turn purchases already entered into opening stock ---------- */
+function convertPage(){const sel=new Set();
+  function run(){
+    if(!sel.size){banner("סמנו לפחות קנייה אחת.");return}
+    const chosen=txs.filter(t=>sel.has(t.id));
+    actionSheet({title:"להפוך "+(chosen.length===1?"קנייה אחת":chosen.length+" קניות")+" למלאי קיים?",
+      what:[bottles(chosen.reduce((a,t)=>a+linesQ(t),0))+" · ",nm(chosen.reduce((a,t)=>a+linesTot(t),0))],
+      msg:"הבקבוקים נשארים במלאי ובקרן באותה עלות. הקניות יירדו מסיכום הקניות ומהתזרים. שם הספק יישמר בהערה.",
+      buttons:[{label:"הפיכה למלאי קיים",fn:()=>{
+        const s=snapshot();
+        txs=txs.map(t=>sel.has(t.id)?{...t,open:true,sup:"",pay:null,note:[t.note,t.sup?"ספק: "+t.sup:""].filter(Boolean).join(" · ")}:t);
+        if(!save()){restoreSnap(s);banner(saveFailMsg());return}
+        closeSheets();refreshAll();banner((chosen.length===1?"קנייה אחת הפכה":chosen.length+" קניות הפכו")+" למלאי קיים",undoTo(s))}}]});
+  }
+  return{title:"קניות למלאי קיים",lead:"ביטול",get trail(){return{label:sel.size?"המרה ("+sel.size+")":"המרה",fn:run}},render(){
+    const buys=txs.filter(t=>t.kind==="buy"&&!t.open).sort(byDate);
+    if(!buys.length)return h("div",{class:"empty"},h("span",{class:"ei",html:icon("buy")}),h("b",null,"אין קניות להמרה"),h("span",null,"כל הקניות כבר רשומות כמלאי קיים, או שעוד לא נרשמו קניות."));
+    const all=buys.every(t=>sel.has(t.id));
+    const W=h("div",{class:"pagewrap"},
+      sf("סמנו את הקניות שהן בעצם סחורה שכבר הייתה אצלכם, ולחצו \"המרה\" למעלה. שום דבר לא צריך להיות מוזן מחדש."),
+      grp(h("button",{class:"cell tint",onclick:()=>{if(all)sel.clear();else buys.forEach(t=>sel.add(t.id));rerender()}},all?"ביטול הסימון":"סימון כל הקניות ("+buys.length+")"),
+        buys.length>1&&h("button",{class:"cell tint",onclick:()=>push(pickerPage("סימון כל הקניות עד",[...new Set(buys.map(t=>t.date))].reverse().map(d=>[d,"עד "+dayLabel(d)+(d.slice(0,4)!==todayStr().slice(0,4)?" "+d.slice(0,4):"")]),null,d=>{sel.clear();buys.filter(t=>t.date<=d).forEach(t=>sel.add(t.id))}))},"סימון כל הקניות עד תאריך מסוים")));
+    let m=null,g=null;
+    for(const t of buys){
+      if(monthOf(t.date)!==m){m=monthOf(t.date);g=grp();W.append(sec(monthLabel(m),g))}
+      g.append(h("button",{class:"cell withicon","aria-checked":String(sel.has(t.id)),onclick:()=>{sel.has(t.id)?sel.delete(t.id):sel.add(t.id);rerender()}},sq(sel.has(t.id)?"cap":"buy",sel.has(t.id)?"bottle":"buy"),
+        h("span",{class:"grow"},h("span",{class:"t1"},t.sup||"קניית סחורה"),h("span",{class:"t2"},shortDate(t.date)+" · "+bottles(linesQ(t))+" · "+linesText(t.lines))),
+        nm(linesTot(t),false,"val"),h("span",{class:"checkmark",html:icon("check")})));
+    }
+    if(sel.size){const ch=buys.filter(t=>sel.has(t.id));W.append(sf("נבחרו "+ch.length+" קניות: "+bottles(ch.reduce((a,t)=>a+linesQ(t),0))+" בשווי "+money(ch.reduce((a,t)=>a+linesTot(t),0))+"."))}
+    return W}}}
 
 /* ---------- customers ---------- */
 const waLink=p=>{let d=(p||"").replace(/\D/g,"");if(d.startsWith("0"))d="972"+d.slice(1);return d?"https://wa.me/"+d:null};
@@ -1281,7 +1330,7 @@ function settingsPage(){return{title:"הגדרות",render(){
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
       sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
     sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" מוצרים · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 7"))}}}
+    sf("המרתף · גרסה 9"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
@@ -1309,7 +1358,7 @@ function cleanBackup(o){
     const b={id:t.id,kind:t.kind,date:t.date,created:+t.created||Date.now(),note:str(t.note),pay:PAYS[t.pay]?t.pay:null};
     if(t.kind==="exp"){if(!(+t.amount>0))continue;b.amount=r2(+t.amount);b.cat=EXPCATS.includes(t.cat)?t.cat:"אחר"}
     else{if(!Array.isArray(t.lines))continue;const ls=t.lines.filter(l=>l&&wid.has(l.w)&&Number.isInteger(+l.q)&&+l.q>0&&+l.p>=0).map(l=>{const o={w:l.w,q:+l.q,p:+(+l.p).toFixed(4)};if(l.u==="c"&&Number.isInteger(+l.cs)&&+l.cs>0&&+l.cp>=0){o.u="c";o.cs=+l.cs;o.cp=r2(+l.cp)}return o});if(!ls.length)continue;b.lines=ls;
-      if(t.kind==="sale"){b.cust=cid.has(t.cust)?t.cust:null;b.paid=!!t.paid;if(b.paid&&isD(t.paidDate))b.paidDate=t.paidDate}else b.sup=str(t.sup)}
+      if(t.kind==="sale"){b.cust=cid.has(t.cust)?t.cust:null;b.paid=!!t.paid;if(b.paid&&isD(t.paidDate))b.paidDate=t.paidDate}else{b.sup=str(t.sup);if(t.open)b.open=true}}
     T.push(b)}
   return{wines:W,custs:Cs,txs:T};
 }
@@ -1378,8 +1427,8 @@ function xlsxSheets(){
     rows:months.map(m=>{const r=monthSum(m);return[monthLabel(m),r.rev,r.cogs,r.gp,pct(r.gp,r.rev),r.exp,r.net,r.buy,r.cin,r.cout,r.flow,r.bottles]})});
   const sales=[];for(const t of asc)if(t.kind==="sale")t.lines.forEach((l,i)=>{const c=(C.cost[t.id]||[])[i]||0;sales.push([t.date,custName(t.cust),wineLabel(wineById(l.w)),isCase(l)?casesN(l.q/l.cs)+" של "+l.cs:"",l.q,isCase(l)?l.cp:null,lt(l)/l.q,lt(l),c,lt(l)-c,t.paid?"כן":"לא",PAYS[t.pay]||"",t.note])});
   S.push({name:"מכירות",cols:[["תאריך",12,"d"],["לקוח",18,"s"],["יין",26,"s"],["ארגזים",14,"s"],["בקבוקים",9,"i"],["מחיר לארגז",12,"m"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["עלות (קרן)",13,"m"],["רווח",13,"m"],["שולם",8,"s"],["תשלום",14,"s"],["הערה",24,"s"]],rows:sales});
-  const buys=[];for(const t of asc)if(t.kind==="buy")for(const l of t.lines)buys.push([t.date,t.sup,wineLabel(wineById(l.w)),isCase(l)?casesN(l.q/l.cs)+" של "+l.cs:"",l.q,isCase(l)?l.cp:null,lt(l)/l.q,lt(l),PAYS[t.pay]||"",t.note]);
-  S.push({name:"קניות",cols:[["תאריך",12,"d"],["ספק",18,"s"],["יין",26,"s"],["ארגזים",14,"s"],["בקבוקים",9,"i"],["מחיר לארגז",12,"m"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["תשלום",14,"s"],["הערה",24,"s"]],rows:buys});
+  const buys=[];for(const t of asc)if(t.kind==="buy")for(const l of t.lines)buys.push([t.date,t.open?"מלאי קיים":"קנייה",t.sup,wineLabel(wineById(l.w)),isCase(l)?casesN(l.q/l.cs)+" של "+l.cs:"",l.q,isCase(l)?l.cp:null,lt(l)/l.q,lt(l),PAYS[t.pay]||"",t.note]);
+  S.push({name:"קניות ומלאי",cols:[["תאריך",12,"d"],["סוג",11,"s"],["ספק",18,"s"],["יין",26,"s"],["ארגזים",14,"s"],["בקבוקים",9,"i"],["מחיר לארגז",12,"m"],["מחיר לבקבוק",13,"m"],["סה״כ",13,"m"],["תשלום",14,"s"],["הערה",24,"s"]],rows:buys});
   S.push({name:"הוצאות",cols:[["תאריך",12,"d"],["קטגוריה",18,"s"],["סכום",13,"m"],["תשלום",14,"s"],["הערה",28,"s"]],rows:asc.filter(t=>t.kind==="exp").map(t=>[t.date,t.cat,t.amount,PAYS[t.pay]||"",t.note])});
   S.push({name:"מלאי",cols:[["יין",26,"s"],["יקב",16,"s"],["סוג",9,"s"],["בציר",7,"s"],["במלאי",8,"i"],["עלות ממוצעת",13,"m"],["קרן במלאי",13,"m"],["מחיר מכירה",13,"m"],["שווי במחיר מכירה",16,"m"],["נמכרו",8,"i"],["רווח מהיין",13,"m"]],
     rows:wines.slice().sort((a,b)=>a.name.localeCompare(b.name,"he")).map(w=>{const s=wineStats(w.id);return[w.name,w.winery,WTYPES[w.type]||"",w.vintage,s.stock,s.avg,s.value,w.price,w.price&&s.stock>0?w.price*s.stock:null,s.sold,s.prof]})});
@@ -1398,10 +1447,11 @@ function barRow(name,amount,part,total,colorCls,sub){const p=total>0?Math.max(0,
 function txRow(t){
   let k=t.kind,t1,t2=[],amt,inc=false;
   if(k==="sale"){const rv=linesTot(t),pr=rv-tcost(t);t1=custName(t.cust)||"מכירה";t2=[bottles(linesQ(t)),"רווח "+money(pr)];amt=money(rv,true);inc=true}
+  else if(k==="buy"&&t.open){t1="מלאי קיים";t2=[bottles(linesQ(t)),linesText(t.lines)];amt=money(linesTot(t))}
   else if(k==="buy"){t1=t.sup||"קניית סחורה";t2=[bottles(linesQ(t)),linesText(t.lines)];amt=money(-linesTot(t))}
   else{t1=t.cat;t2=[t.note||PAYS[t.pay]||""];amt=money(-t.amount)}
   if(k!=="exp"&&t.note)t2.push(t.note);
-  const cell=h("button",{class:"cell withicon",onclick:()=>openSheet(txPage(t))},sq(k),
+  const cell=h("button",{class:"cell withicon",onclick:()=>openSheet(txPage(t))},t.open?sq("cap","bottle"):sq(k),
     h("span",{class:"grow"},h("span",{class:"t1"},t1),h("span",{class:"t2"},t2.filter(Boolean).join(" · "),k==="sale"&&!t.paid&&h("span",{class:"warn"}," · לא שולם"))),
     h("span",{class:"amt num"+(inc?" inc":"")},amt));
   const row=h("div",{class:"swrow withicon"},h("button",{class:"swdel",onclick:()=>askDelete(t),tabindex:"-1"},"מחיקה"),h("div",{class:"swcontent"},cell));
@@ -1554,6 +1604,7 @@ document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>setT
 const newMenu=()=>actionSheet({title:"מה רושמים?",buttons:[
   {label:"מכירה",fn:()=>openSheet(txPage(null,{kind:"sale"}))},
   {label:"קניית סחורה",fn:()=>openSheet(txPage(null,{kind:"buy"}))},
+  {label:"מלאי קיים (לא קנייה)",fn:()=>openSheet(txPage(null,{kind:"buy",open:true}))},
   {label:"הוצאה",fn:()=>openSheet(txPage(null,{kind:"exp"}))},
   {label:"מוצר חדש למלאי",fn:()=>openSheet(winePage(null))},
   {label:"לקוח חדש",fn:()=>openSheet(custForm(null))}]});
