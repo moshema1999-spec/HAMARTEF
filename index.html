@@ -977,14 +977,21 @@ function setCloudAccounts(){
   const s=getLS(ACT_CLOUD_K,null);acc=accounts.some(a=>a.id===s)?s:(accounts[0]?accounts[0].id:null);
 }
 function stopCloudWatch(){if(cloud.unL){cloud.unL();cloud.unL=null}if(cloud.unI){cloud.unI();cloud.unI=null}}
-function watchActive(){
+function watchActive(attempt){
   if(cloud.unI){cloud.unI();cloud.unI=null}
+  attempt=typeof attempt==="number"?attempt:0;
   cloud.base=itemMap();cloud.loaded=false;cloud.pending=false;cloud.err=null;
   if(!acc||!cloudOn()||!cloud.api)return;
   const id=acc;
-  cloud.unI=cloud.api.watchItems(id,(res,err)=>{if(id!==acc)return;
-    if(!res){cloud.err=cloudErrMsg(err);renderSync();return}
-    cloud.err=null;applyItems(res)});
+  const start=()=>{if(id!==acc||!cloudOn()||cloud.unI)return;
+    cloud.unI=cloud.api.watchItems(id,(res,err)=>{if(id!==acc)return;
+      if(!res){
+        /* a brand-new account may not exist on the server yet: retry a few times before showing an error */
+        if(/permission-denied|not-found/.test((err&&err.code)||"")&&attempt<6){if(cloud.unI){cloud.unI();cloud.unI=null}setTimeout(()=>{if(id===acc&&!cloud.unI)watchActive(attempt+1)},700*(attempt+1));return}
+        cloud.err=cloudErrMsg(err);renderSync();return}
+      cloud.err=null;applyItems(res)})};
+  const pend=cloud.creating&&cloud.creating[id];
+  if(pend)pend.then(start,start);else start();
 }
 function onLedgers(list){
   cloud.ledgersReady=true;
@@ -992,6 +999,7 @@ function onLedgers(list){
   setLS(CLOUD_LEDGERS_K,JSON.stringify(cloud.ledgers));
   const prev=acc;setCloudAccounts();
   if(acc!==prev||!cloud.unI){if(acc)setLS(ACT_CLOUD_K,acc);loadData();filter="all";watchActive()}
+  else if(cloud.err&&acc&&list.some(l=>l.id===acc))watchActive();
   refreshAll();
   if(!cloud.offered&&localWithData().length){cloud.offered=true;setTimeout(()=>{if(!stack.length&&!document.querySelector(".actionsheet"))offerUpload()},400)}
 }
@@ -1002,7 +1010,7 @@ function onUser(u){
     try{localStorage.removeItem(CLOUD_USER_K);localStorage.removeItem(CLOUD_LEDGERS_K)}catch(e){}
     if(was){accounts=localAccounts;acc=localAcc;loadData();filter="all";closeSheets()}
     refreshAll();return}
-  stopCloudWatch();
+  stopCloudWatch();cloud.shareErr=null;
   if(cloud.user&&cloud.user.uid!==u.uid){cloud.inMode=false;cloud.ledgers=[]}
   cloud.user=u;setLS(CLOUD_USER_K,JSON.stringify(u));
   if(!cloud.inMode){cloud.ledgers=cloud.ledgers||[];setCloudAccounts();cloud.inMode=true;loadData();filter="all"}
@@ -1025,7 +1033,7 @@ document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkVerif
 function newLedger(name){
   const u=cloud.user;
   const r=cloud.api.createLedger({name,owner:u.uid,ownerEmail:u.email,emails:[u.email],created:Date.now()});
-  r.done.catch(x=>banner("החשבון לא נוצר בענן: "+cloudErrMsg(x)));
+  cloud.creating=cloud.creating||{};cloud.creating[r.id]=r.done.then(()=>{delete cloud.creating[r.id]},x=>{delete cloud.creating[r.id];banner("החשבון לא נוצר בענן: "+cloudErrMsg(x))});
   cloud.ledgers=(cloud.ledgers||[]).concat([{id:r.id,name,owner:u.uid,ownerEmail:u.email,emails:[u.email],created:Date.now()}]);
   return r.id;
 }
@@ -1063,6 +1071,7 @@ function cloudErrMsg(x){const c=(x&&x.code)||"";
 function syncText(){
   if(cloud.err)return cloud.err;
   if(cloud.user&&!cloud.user.verified)return"המייל לא אומת · חשבונות משותפים לא יופיעו";
+  if(cloud.shareErr)return"חשבונות ששותפו איתכם לא נטענו ("+((cloud.shareErr&&cloud.shareErr.code)||"שגיאה")+")";
   if(!navigator.onLine)return cloud.pending?"אין חיבור · השינויים יישלחו כשתחזור הקליטה":"אין חיבור · מוצגים הנתונים האחרונים";
   if(!cloud.api||!cloud.loaded)return"מתחבר…";
   if(cloud.pending)return"מסנכרן…";
@@ -1188,7 +1197,7 @@ async function firebaseAdapter(config){
       const maps=[new Map(),new Map()],ready=[false,!user.verified];
       const emit=()=>{if(ready[0]&&ready[1])cb([...new Map([...maps[0],...maps[1]]).values()])};
       const mk=(q,i)=>F.onSnapshot(q,s=>{maps[i]=new Map(s.docs.map(d=>[d.id,{id:d.id,...d.data()}]));ready[i]=true;emit()},
-        err=>{ready[i]=true;if(i===0)cb(null,err);else emit()});
+        err=>{ready[i]=true;if(i===0)cb(null,err);else{cloud.shareErr=err;emit()}});
       const un=[mk(F.query(L(),F.where("owner","==",user.uid)),0)];
       if(user.verified)un.push(mk(F.query(L(),F.where("emails","array-contains",user.email)),1));
       return()=>un.forEach(f=>f());
@@ -1272,7 +1281,7 @@ function settingsPage(){return{title:"הגדרות",render(){
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
       sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
     sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" מוצרים · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 6"))}}}
+    sf("המרתף · גרסה 7"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
