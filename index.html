@@ -1010,7 +1010,18 @@ function onUser(u){
     if(!list){cloud.err=cloudErrMsg(err);renderSync();return}
     cloud.err=null;onLedgers(list)});
   watchActive();refreshAll();
+  if(!u.verified)setTimeout(checkVerified,1500);
 }
+/* Firebase keeps a stale "not verified" flag until the user is reloaded, so check again on start and whenever the app comes back to the front */
+let verifyBusy=false;
+async function checkVerified(manual){
+  if(!cloudOn()||!cloud.api||cloud.user.verified||verifyBusy)return;
+  verifyBusy=true;
+  try{const nu=await cloud.api.reloadUser();if(nu&&nu.verified){onUser(nu);banner("המייל אומת. חשבונות ששותפו איתכם יופיעו עכשיו")}else if(manual)banner("המייל עוד לא אומת. פתחו את הקישור במייל (בדקו גם בספאם)")}
+  catch(x){if(manual)banner(cloudErrMsg(x))}
+  finally{verifyBusy=false}
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)checkVerified()});
 function newLedger(name){
   const u=cloud.user;
   const r=cloud.api.createLedger({name,owner:u.uid,ownerEmail:u.email,emails:[u.email],created:Date.now()});
@@ -1047,10 +1058,11 @@ function cloudErrMsg(x){const c=(x&&x.code)||"";
   const M={"auth/invalid-credential":"המייל או הסיסמה לא נכונים.","auth/wrong-password":"המייל או הסיסמה לא נכונים.","auth/user-not-found":"אין משתמש עם המייל הזה. אפשר להירשם.",
     "auth/invalid-login-credentials":"המייל או הסיסמה לא נכונים.","auth/email-already-in-use":"כבר יש משתמש עם המייל הזה. נסו להיכנס.","auth/weak-password":"הסיסמה צריכה להיות באורך 6 תווים לפחות.",
     "auth/invalid-email":"כתובת המייל לא תקינה.","auth/network-request-failed":"אין חיבור לאינטרנט.","auth/too-many-requests":"יותר מדי ניסיונות. נסו שוב בעוד כמה דקות.",
-    "auth/missing-email":"הזינו כתובת מייל.","permission-denied":"אין הרשאה לחשבון הזה. ייתכן שהשיתוף הוסר.","unavailable":"אין חיבור לענן כרגע.","failed-precondition":"צריך חיבור לאינטרנט לפעולה הזו."};
+    "auth/missing-email":"הזינו כתובת מייל.","auth/operation-not-allowed":"הכניסה עם מייל וסיסמה לא הופעלה ב־Firebase (Authentication ← Sign-in method ← Email/Password).","permission-denied":"אין הרשאה לחשבון הזה. ייתכן שהשיתוף הוסר.","unavailable":"אין חיבור לענן כרגע.","failed-precondition":"צריך חיבור לאינטרנט לפעולה הזו."};
   return M[c]||M[c.replace(/^firestore\//,"")]||("משהו השתבש"+(c?" ("+c+")":"")+". נסו שוב.")}
 function syncText(){
   if(cloud.err)return cloud.err;
+  if(cloud.user&&!cloud.user.verified)return"המייל לא אומת · חשבונות משותפים לא יופיעו";
   if(!navigator.onLine)return cloud.pending?"אין חיבור · השינויים יישלחו כשתחזור הקליטה":"אין חיבור · מוצגים הנתונים האחרונים";
   if(!cloud.api||!cloud.loaded)return"מתחבר…";
   if(cloud.pending)return"מסנכרן…";
@@ -1059,7 +1071,7 @@ function syncText(){
 function renderSync(){
   const el=$("syncLine");const on=cloudOn()&&!!acc;el.hidden=!on;if(!on)return;
   const a=accounts.find(x=>x.id===acc),others=a?a.emails.filter(e=>e!==cloud.user.email):[];
-  el.className="syncline"+(cloud.err?" bad":"");
+  el.className="syncline"+(cloud.err||!cloud.user.verified?" bad":"");el.onclick=cloud.user.verified?null:()=>setTab("settings");
   el.replaceChildren(h("i",{class:"dot "+(cloud.err?"b-exp":(!navigator.onLine||cloud.pending||!cloud.loaded)?"b-cap":"b-sale")}),
     h("span",null,syncText()+(others.length&&!cloud.err?" · משותף עם "+others.join(", "):"")));
 }
@@ -1146,9 +1158,10 @@ function cloudSec(){
     cloud.err&&h("p",{class:"errline"},cloud.err),sf("בלי כניסה, הנתונים נשמרים רק בטלפון הזה."));
   const u=cloud.user;
   const g=grp(h("div",{class:"cell withicon"},sq(cloud.err?"exp":"sale","cloud"),h("span",{class:"grow"},h("span",{class:"t1",dir:"ltr",style:"text-align:right"},u.email),h("span",{class:"t2 wrap"},acc?syncText():"מחובר"))));
+  g.append(h("div",{class:"cell"},h("span",{class:"grow t2 wrap",style:"font-size:13px"},"כדי שישתפו איתכם חשבון, צריך לשתף בדיוק עם המייל הזה: ",h("b",{dir:"ltr"},u.email))));
   if(!u.verified)g.append(
     h("div",{class:"cell withicon"},sq("cap","clock"),h("span",{class:"grow"},h("span",{class:"t1"},"המייל עוד לא אומת"),h("span",{class:"t2 wrap"},"פתחו את הקישור ששלחנו אליכם במייל (בדקו גם בספאם). בלי אימות לא תראו חשבונות ששותפו איתכם."))),
-    h("button",{class:"cell tint",onclick:async()=>{try{const nu=await cloud.api.reloadUser();if(nu&&nu.verified){onUser(nu);banner("המייל אומת")}else banner("המייל עוד לא אומת")}catch(x){banner(cloudErrMsg(x))}}},"אימתתי, לבדוק שוב"),
+    h("button",{class:"cell tint",onclick:()=>checkVerified(true)},"אימתתי, לבדוק שוב"),
     h("button",{class:"cell tint",onclick:()=>cloud.api.resendVerify().then(()=>banner("שלחנו שוב את מייל האימות")).catch(x=>banner(cloudErrMsg(x)))},"שליחה חוזרת של מייל האימות"));
   if(localWithData().length)g.append(h("button",{class:"cell tint",onclick:offerUpload},"העלאת החשבונות מהטלפון לענן"));
   g.append(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:"להתנתק?",msg:"הנתונים נשארים בענן. אחרי ההתנתקות האפליקציה תציג רק את מה שנשמר בטלפון, בלי סנכרון.",buttons:[{label:"התנתקות",destructive:true,fn:()=>cloud.api.signOut()}]})},"התנתקות"));
@@ -1259,7 +1272,7 @@ function settingsPage(){return{title:"הגדרות",render(){
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
       sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
     sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" מוצרים · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 5"))}}}
+    sf("המרתף · גרסה 6"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
@@ -1443,6 +1456,9 @@ function render(){
     M.append(h("div",{class:"card"},h("div",{class:"empty"},h("span",{class:"ei",html:icon("cloud")}),
       h("b",null,cloud.ledgersReady?"אין עדיין חשבון בענן":"טוען חשבונות…"),
       h("span",null,"צרו חשבון חדש, או בקשו מהשותף לשתף איתכם את החשבון המשותף לפי המייל "+cloud.user.email+"."),
+      !cloud.user.verified&&h("span",{class:"bad"},"המייל שלכם עוד לא אומת, ולכן חשבון ששותף איתכם לא יופיע. פתחו את הקישור שנשלח למייל (בדקו גם בספאם) והקישו על \"אימתתי, לבדוק שוב\"."),
+      !cloud.user.verified&&h("button",{class:"cell tint center",onclick:()=>checkVerified(true)},"אימתתי, לבדוק שוב"),
+      !cloud.user.verified&&h("button",{class:"cell tint center",onclick:()=>cloud.api.resendVerify().then(()=>banner("שלחנו שוב את מייל האימות")).catch(x=>banner(cloudErrMsg(x)))},"שליחה חוזרת של מייל האימות"),
       h("button",{class:"cell tint center",onclick:()=>openSheet(cloudAccountForm(null))},"יצירת חשבון"),
       localWithData().length&&h("button",{class:"cell tint center",onclick:offerUpload},"העלאת החשבונות מהטלפון"))));
     return;
