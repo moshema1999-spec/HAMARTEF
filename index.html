@@ -104,8 +104,8 @@ svg.i{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke
 .tile .acc{border-top:.5px solid var(--sep);margin-top:6px;padding-top:6px;font-size:12px;color:var(--label2);display:flex;justify-content:space-between;gap:6px}
 
 /* kind colors */
-.c-sale{color:var(--green-text)}.c-buy{color:var(--indigo-text)}.c-exp{color:var(--red-text)}.c-cap{color:var(--orange-text)}.c-prof{color:var(--teal)}.c-wine{color:var(--wine-text)}
-.b-sale{background:var(--green)}.b-buy{background:var(--indigo)}.b-exp{background:var(--red)}.b-cap{background:var(--orange)}.b-prof{background:var(--teal)}.b-wine{background:var(--wine)}.b-cust{background:var(--tint)}.b-gray{background:var(--gray)}
+.c-sale{color:var(--green-text)}.c-buy{color:var(--indigo-text)}.c-exp{color:var(--red-text)}.c-cap{color:var(--orange-text)}.c-prof{color:var(--teal)}.c-wine{color:var(--wine-text)}.c-cust{color:var(--tint)}
+.b-sale{background:var(--green)}.b-buy{background:var(--indigo)}.b-exp{background:var(--red)}.b-cap{background:var(--orange)}.b-prof{background:var(--teal)}.b-wine{background:var(--wine)}.b-cust{background:var(--tint)}.b-spirit{background:var(--orange)}.b-gray{background:var(--gray)}
 
 /* groups */
 .sec{display:flex;flex-direction:column;gap:7px}
@@ -224,6 +224,22 @@ input::placeholder{color:var(--label3)}
 .filled{width:100%;max-width:568px;height:50px;border-radius:14px;background:var(--tint);color:#fff;font-weight:600;display:flex;align-items:center;justify-content:center;gap:8px}
 .filled:active{opacity:.75}
 
+/* tab bar */
+.tabbar{position:fixed;bottom:0;left:0;right:0;z-index:9;display:flex;align-items:flex-start;justify-content:space-around;
+  padding:7px max(6px,env(safe-area-inset-right)) calc(6px + env(safe-area-inset-bottom)) max(6px,env(safe-area-inset-left));
+  background:var(--bar);-webkit-backdrop-filter:saturate(180%) blur(20px);backdrop-filter:saturate(180%) blur(20px);box-shadow:0 -.5px 0 var(--sep)}
+.tab{flex:1;max-width:110px;min-height:48px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--label2);font-size:11px;font-weight:500;position:relative;text-align:center}
+.tab svg{width:27px;height:27px;stroke-width:1.8}
+.tab[aria-current="page"]{color:var(--tint)}
+.tab[aria-current="page"] svg{stroke-width:2.3}
+.tab:active{opacity:.5}
+.badge{position:absolute;top:-6px;right:calc(50% + 2px);min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--red);color:#fff;font:700 12px/20px var(--font-num);text-align:center;box-shadow:0 0 0 2px var(--bg)}
+.tabplus{flex:1;max-width:110px;display:grid;place-items:center;min-height:48px}
+.tabplus span{width:58px;height:38px;border-radius:12px;background:var(--wine);color:#fff;display:grid;place-items:center;box-shadow:0 4px 12px rgba(160,21,62,.35)}
+.tabplus span svg{width:24px;height:24px;stroke-width:2.6}
+.tabplus:active span{transform:scale(.94)}
+.app{padding-bottom:calc(110px + env(safe-area-inset-bottom))}
+
 /* empty */
 .empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:28px 24px;color:var(--label2)}
 .empty .ei{width:48px;height:48px;color:var(--label3);stroke-width:1.5;margin-bottom:6px}
@@ -246,18 +262,18 @@ input::placeholder{color:var(--label3)}
 </head>
 <body>
 <header class="nav gut">
-  <div class="lead"><button class="navicon" id="setBtn" aria-label="הגדרות" data-ic="settings"></button><button class="navicon" id="acctNav" aria-label="חשבונות" data-ic="users"></button></div>
+  <div class="lead"><button class="navicon" id="acctNav" aria-label="חשבונות" data-ic="accounts"></button></div>
   <div class="navtitle" id="navTitle">המרתף</div>
   <div class="trail"><button class="navicon" id="addBtn" aria-label="הוספה" data-ic="plus"></button></div>
 </header>
 
 <main class="app gut" id="app">
   <div class="head">
-    <h1 class="largetitle">המרתף</h1>
+    <h1 class="largetitle" id="bigTitle">המרתף</h1>
     <button class="acctbtn" id="acctBtn" hidden><span id="acctName"></span><span data-ic="chevD"></span></button>
     <div class="seg acctseg" id="acctSeg" hidden></div>
     <div class="syncline" id="syncLine" hidden></div>
-    <div class="month">
+    <div class="month" id="monthRow">
       <button class="chev" id="prevM" aria-label="החודש הקודם" data-ic="chevR"></button>
       <b id="mLabel"></b>
       <button class="chev" id="nextM" aria-label="החודש הבא" data-ic="chevL"></button>
@@ -266,7 +282,13 @@ input::placeholder{color:var(--label3)}
   <div id="main" class="pagewrap"></div>
 </main>
 
-<div class="toolbar gut"><button class="filled" id="saleBtn"><span data-ic="plus"></span>מכירה חדשה</button></div>
+<nav class="tabbar" id="tabbar" aria-label="ניווט">
+  <button class="tab" data-tab="home"><span data-ic="home"></span>בית</button>
+  <button class="tab" data-tab="custs"><span data-ic="users"></span>לקוחות<b class="badge num" id="badgeCusts" hidden></b></button>
+  <button class="tabplus" id="plusBtn" aria-label="קנייה או מכירה חדשה"><span data-ic="plus"></span></button>
+  <button class="tab" data-tab="stock"><span data-ic="bottle"></span>מלאי<b class="badge num" id="badgeStock" hidden></b></button>
+  <button class="tab" data-tab="settings"><span data-ic="settings"></span>הגדרות</button>
+</nav>
 
 <div class="scrim" id="scrim" hidden></div>
 <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
@@ -292,13 +314,20 @@ const FIREBASE_SDK="13.1.0";
 /* ---------- constants ---------- */
 const K={wines:"cel-wines-v1",custs:"cel-customers-v1",txs:"cel-txs-v1",theme:"cel-theme",backup:"cel-last-backup"};
 const KN={sale:"מכירה",buy:"קנייה",exp:"הוצאה"};
-const WTYPES={red:"אדום",white:"לבן",rose:"רוזה",spark:"מבעבע",dessert:"קינוח",other:"אחר"};
+const WTYPES={red:"יין אדום",white:"יין לבן",rose:"יין רוזה",spark:"יין מבעבע",dessert:"יין קינוח",
+  whisky:"ויסקי",vodka:"וודקה",gin:"ג׳ין",rum:"רום",tequila:"טקילה",arak:"ערק",brandy:"ברנדי וקוניאק",liqueur:"ליקר",beer:"בירה",other:"אחר"};
+const TGROUPS={wine:"יין",spirit:"שתייה חריפה",other:"בירה ואחר"};
+const tgroup=k=>["red","white","rose","spark","dessert"].includes(k)?"wine":(k==="beer"||k==="other"||!WTYPES[k])?"other":"spirit";
 const EXPCATS=["משלוחים","אחסון וקירור","שיווק ופרסום","אריזות ומיתוג","רישוי ומיסים","עמלות תשלום","דלק ונסיעות","טעימות ודוגמאות","תוכנה ושירותים","אחר"];
 const PAYS={cash:"מזומן",bit:"ביט / פייבוקס",transfer:"העברה בנקאית",credit:"אשראי",check:"צ׳ק"};
 
 /* ---------- icons ---------- */
 const ICONS={
   plus:'<path d="M12 5v14M5 12h14"/>',
+  home:'<path d="M4 10.5L12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1v-9.5z"/>',
+  bottle:'<path d="M10 2.5h4M10.5 2.5v4.2L8.4 9.6A2.5 2.5 0 0 0 8 11v9a1.5 1.5 0 0 0 1.5 1.5h5A1.5 1.5 0 0 0 16 20v-9a2.5 2.5 0 0 0-.4-1.4l-2.1-2.9V2.5M8 13.5h8"/>',
+  accounts:'<rect x="3" y="4" width="18" height="16" rx="3"/><circle cx="12" cy="10.5" r="2.6"/><path d="M7.5 17a4.8 4.8 0 0 1 9 0"/>',
+  spirit:'<path d="M10 2.5h4M10.5 2.5v4.2L8.4 9.6A2.5 2.5 0 0 0 8 11v9a1.5 1.5 0 0 0 1.5 1.5h5A1.5 1.5 0 0 0 16 20v-9a2.5 2.5 0 0 0-.4-1.4l-2.1-2.9V2.5M8 13.5h8"/>',
   settings:'<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
   chevL:'<path d="M15 6l-6 6 6 6"/>',chevR:'<path d="M9 6l6 6-6 6"/>',chevD:'<path d="M6 9l6 6 6-6"/>',
   check:'<path d="M5 12.5l4.5 4.5L19 7"/>',
@@ -358,6 +387,7 @@ const bottles=n=>n===1?"בקבוק אחד":NI.format(n)+" בקבוקים";
 const pct=(a,b)=>b>0?Math.round(a/b*100)+"%":"—";
 const disc=()=>h("span",{class:"disc",html:icon("chevL")});
 const sq=(k,ic)=>h("span",{class:"sq b-"+k,html:icon(ic||k)});
+const prodSq=w=>{const g=w?tgroup(w.type):"wine";return g==="wine"?sq("wine"):sq(g==="spirit"?"spirit":"gray","bottle")};
 const sec=(title,...kids)=>h("section",{class:"sec"},title!=null&&h("h2",{class:"sh"},title),...kids);
 const grp=(...kids)=>h("div",{class:"group"},...kids);
 const sf=t=>h("p",{class:"sf"},t);
@@ -388,7 +418,7 @@ function cacheData(){if(!acc)return false;try{localStorage.setItem(dk(K.wines),J
 function save(){if(cloudOn()){if(!acc||!cloud.api)return false;cacheData();cloudPush();return true}return cacheData()}
 const saveFailMsg=()=>cloudOn()&&!cloud.api?"אין עדיין חיבור לענן. נסו שוב בעוד רגע.":"השמירה לא הצליחה. ייתכן שהזיכרון בטלפון מלא.";
 function saveAccounts(){try{if(cloudOn()){if(acc)localStorage.setItem(ACT_CLOUD_K,acc)}else{localAccounts=accounts;localAcc=acc;localStorage.setItem(ACC_K,JSON.stringify(localAccounts));localStorage.setItem(ACT_K,acc)}return true}catch(e){return false}}
-function accSummary(a,kf){kf=kf||keyOf;const t=load(kf(a.id,K.txs)),w=load(kf(a.id,K.wines));const n=t.filter(x=>x.kind==="sale").length;return n+(n===1?" מכירה":" מכירות")+" · "+w.length+(w.length===1?" יין":" יינות")}
+function accSummary(a,kf){kf=kf||keyOf;const t=load(kf(a.id,K.txs)),w=load(kf(a.id,K.wines));const n=t.filter(x=>x.kind==="sale").length;return n+(n===1?" מכירה":" מכירות")+" · "+w.length+(w.length===1?" מוצר":" מוצרים")}
 function accDesc(a){let s=accSummary(a);if(cloudOn()&&a.emails){const others=a.emails.filter(e=>e!==cloud.user.email);if(a.owner!==cloud.user.uid)s+=" · של "+a.ownerEmail;else if(others.length)s+=" · משותף עם "+others.join(", ")}return s}
 /* restore the signed-in session from cache so the first paint shows cloud data */
 if(cloud)try{const u=JSON.parse(localStorage.getItem(CLOUD_USER_K)||"null");
@@ -533,6 +563,7 @@ function show(restore){
   sInner.replaceChildren(p.render());
   sBody.scrollTop=restore?(p.scroll||0):0;
 }
+const go=p=>stack.length?push(p):openSheet(p);
 function rerender(){if(stack.length){const p=stack[stack.length-1];p.scroll=sBody.scrollTop;show(true)}}
 scrimEl.addEventListener("click",closeSheets);
 document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!document.querySelector(".actionsheet")&&stack.length)closeSheets()});
@@ -661,16 +692,16 @@ function txPage(t,preset){
       l.u=u;rerender()};
     const useg=h("div",{class:"seg"},h("button",{"aria-pressed":String(!isC),onclick:()=>setUnit("b")},"בקבוקים"),h("button",{"aria-pressed":String(isC),onclick:()=>setUnit("c")},"ארגזים"));
     const g=grp(
-      h("button",{class:"cell withicon",onclick:()=>push(winePicker(l.w,id=>{if(l.w!==id){l.w=id;l.cs=defCs(id);l.p=null;prefill(l)}},cm))},sq("wine"),
-        h("span",{class:"grow"},h("span",{class:"t1"+(w?"":" ph")},w?wineLabel(w):"בחירת יין"),w&&stockT),disc()),
+      h("button",{class:"cell withicon",onclick:()=>push(winePicker(l.w,id=>{if(l.w!==id){l.w=id;l.cs=defCs(id);l.p=null;prefill(l)}},cm))},prodSq(w),
+        h("span",{class:"grow"},h("span",{class:"t1"+(w?"":" ph")},w?wineLabel(w):"בחירת מוצר"),w&&stockT),disc()),
       h("div",{class:"cell"},useg),
       isC&&h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"בקבוקים בארגז"),h("span",{class:"t2"},"כמה בקבוקים יש בכל ארגז")),csIn),
       h("div",{class:"cell"},h("span",{class:"grow"},isC?"כמות ארגזים":"כמות"),qIn,h("span",{class:"stepper"},minus,h("i"),plus)),
       h("label",{class:"cell"},h("span",{class:"grow"},(sale?"מחיר מכירה ":"מחיר קנייה ")+(isC?"לארגז":"לבקבוק")),pIn),
       h("div",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t2",style:"font-size:15px"},"סה״כ"),isC&&perB),lineTot),
-      f.lines.length>1&&h("button",{class:"cell center destructive",onclick:()=>{f.lines.splice(i,1);rerender()}},"הסרת היין מהרשימה"));
+      f.lines.length>1&&h("button",{class:"cell center destructive",onclick:()=>{f.lines.splice(i,1);rerender()}},"הסרה מהרשימה"));
     l._sync=sync;
-    return sec(f.lines.length>1?"יין "+(i+1):"יין",g);
+    return sec(f.lines.length>1?"מוצר "+(i+1):"מוצר",g);
   }
 
   function sumSec(){
@@ -679,14 +710,14 @@ function txPage(t,preset){
     updSum=()=>{let T=0,Cc=0,miss=false;for(const l of f.lines){if(!(l.q>0)||l.p==null){continue}T+=l.q*l.p;if(l.w){Cc+=bq(l)*cm.avg(l.w);if(!cm.hasCost(l.w))miss=true}}
       tot.textContent=money(T);
       if(sale){cost.textContent=money(Cc);prof.textContent=money(T-Cc);prof.className="val num "+(T-Cc>=0?"pos":"neg");
-        margin.textContent=miss?"ליין אחד או יותר עוד לא נרשמה קנייה, ולכן העלות חלקית":("שולי רווח "+pct(T-Cc,T))}};
+        margin.textContent=miss?"למוצר אחד או יותר עוד לא נרשמה קנייה, ולכן העלות חלקית":("שולי רווח "+pct(T-Cc,T))}};
     const g=grp(h("div",{class:"cell"},h("span",{class:"grow"},sale?"סה״כ לתשלום":"סה״כ קנייה"),tot));
     if(sale){g.append(
       h("div",{class:"cell withicon"},sq("cap"),h("span",{class:"grow"},h("span",{class:"t1"},"חוזר לקרן"),h("span",{class:"t2"},"מה ששילמתם על הבקבוקים")),cost),
       h("div",{class:"cell withicon"},sq("prof"),h("span",{class:"grow"},h("span",{class:"t1"},"רווח"),margin),prof))}
     return h("div",{class:"pagewrap"},
-      sec(null,grp(h("button",{class:"cell tint",onclick:()=>{f.lines.push(newLine());rerender()}},"+ הוספת יין נוסף"))),
-      sec("סיכום",g,sale&&sf("העלות מחושבת לפי ממוצע מחירי הקנייה של כל יין במלאי.")));
+      sec(null,grp(h("button",{class:"cell tint",onclick:()=>{f.lines.push(newLine());rerender()}},"+ הוספת מוצר נוסף"))),
+      sec("סיכום",g,sale&&sf("העלות מחושבת לפי ממוצע מחירי הקנייה של כל מוצר במלאי.")));
   }
 
   function expSec(){
@@ -715,11 +746,11 @@ function txPage(t,preset){
       out.amount=r2(f.amount);out.cat=f.cat;out.pay=f.pay||null;
     }else{
       const ls=f.lines.filter(l=>l.w||l.p!=null);
-      if(!ls.some(l=>l.w))return E("בחרו לפחות יין אחד.");
-      for(const l of ls){if(!l.w)return E("בחרו יין בכל שורה, או הסירו את השורה הריקה.");
-        if(!(Number.isInteger(l.q)&&l.q>0))return E("הזינו כמות לכל יין.");
+      if(!ls.some(l=>l.w))return E("בחרו לפחות מוצר אחד.");
+      for(const l of ls){if(!l.w)return E("בחרו מוצר בכל שורה, או הסירו את השורה הריקה.");
+        if(!(Number.isInteger(l.q)&&l.q>0))return E("הזינו כמות לכל מוצר.");
         if(l.u==="c"&&!(Number.isInteger(l.cs)&&l.cs>0))return E("הזינו כמה בקבוקים יש בארגז.");
-        if(l.p==null||!(l.p>=0))return E("הזינו מחיר לכל יין.")}
+        if(l.p==null||!(l.p>=0))return E("הזינו מחיר לכל מוצר.")}
       out.lines=ls.map(fromForm);out.pay=f.pay||null;
       if(f.kind==="sale"){
         let cid=f.cust;const name=f.custName.trim();
@@ -758,21 +789,21 @@ function txPage(t,preset){
 }
 
 /* ---------- wines ---------- */
-function winePicker(sel,onPick,cm){let q="";return{title:"בחירת יין",render(){
+function winePicker(sel,onPick,cm){let q="";return{title:"בחירת מוצר",render(){
   const list=grp();
   const fill=()=>{list.replaceChildren();
     const ws=wines.filter(w=>!q||(w.name+" "+(w.winery||"")+" "+(w.vintage||"")).toLowerCase().includes(q)).sort((a,b)=>a.name.localeCompare(b.name,"he"));
     for(const w of ws){const s=cm.stock(w.id);
-      list.append(h("button",{class:"cell withicon","aria-checked":String(w.id===sel),onclick:()=>{onPick(w.id);pop()}},sq("wine"),
-        h("span",{class:"grow"},h("span",{class:"t1"},wineLabel(w)),h("span",{class:"t2"+(s<=0?" bad":"")},[w.winery,"במלאי: "+NI.format(s)].filter(Boolean).join(" · "))),
+      list.append(h("button",{class:"cell withicon","aria-checked":String(w.id===sel),onclick:()=>{onPick(w.id);pop()}},prodSq(w),
+        h("span",{class:"grow"},h("span",{class:"t1"},wineLabel(w)),h("span",{class:"t2"+(s<=0?" bad":"")},[WTYPES[w.type],w.winery,"במלאי: "+NI.format(s)].filter(Boolean).join(" · "))),
         h("span",{class:"checkmark",html:icon("check")})))}
     list.hidden=!ws.length};
   fill();
-  const search=h("input",{class:"text",type:"search",placeholder:"חיפוש יין",oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}});
+  const search=h("input",{class:"text",type:"search",placeholder:"חיפוש מוצר",oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}});
   return h("div",{class:"pagewrap"},
     wines.length>6&&grp(h("div",{class:"cell withicon"},h("span",{class:"sq b-gray",html:icon("search")}),search)),
-    grp(h("button",{class:"cell tint withicon",onclick:()=>push(winePage(null,w=>{stack.pop();onPick(w.id);pop()}))},h("span",{class:"sq b-wine",html:icon("plus")}),"יין חדש")),
-    list,!wines.length&&sf("עוד לא הוספתם יינות. הוסיפו את היין הראשון, והוא יישמר לפעמים הבאות."))}}}
+    grp(h("button",{class:"cell tint withicon",onclick:()=>push(winePage(null,w=>{stack.pop();onPick(w.id);pop()}))},h("span",{class:"sq b-wine",html:icon("plus")}),"מוצר חדש")),
+    list,!wines.length&&sf("עוד לא הוספתם מוצרים. הוסיפו את הראשון, והוא יישמר לפעמים הבאות."))}}}
 
 function wineStats(id){let sq_=0,rev=0,prof=0,bq=0,bv=0;
   for(const t of txs){if(t.kind==="sale")t.lines.forEach((l,i)=>{if(l.w===id){sq_+=l.q;rev+=lt(l);prof+=lt(l)-((C.cost[t.id]||[])[i]||0)}});
@@ -782,14 +813,14 @@ function wineStats(id){let sq_=0,rev=0,prof=0,bq=0,bv=0;
 function winePage(w,onSaved){
   const ed=!!w;const f=w?{...w}:{name:"",winery:"",type:"red",vintage:"",price:null,cs:6,note:""};let err;
   function submit(){
-    const name=(f.name||"").trim();if(!name){err.textContent="הזינו שם ליין.";err.hidden=false;sBody.scrollTop=0;return}
-    const vin=String(f.vintage||"").trim();if(vin&&!/^\d{4}$/.test(vin)){err.textContent="שנת הבציר צריכה להיות בת ארבע ספרות.";err.hidden=false;sBody.scrollTop=0;return}
+    const name=(f.name||"").trim();if(!name){err.textContent="הזינו שם למוצר.";err.hidden=false;sBody.scrollTop=0;return}
+    const vin=tgroup(f.type)==="wine"?String(f.vintage||"").trim():"";if(vin&&!/^\d{4}$/.test(vin)){err.textContent="שנת הבציר צריכה להיות בת ארבע ספרות.";err.hidden=false;sBody.scrollTop=0;return}
     const out={id:ed?w.id:uid("w"),name,winery:(f.winery||"").trim(),type:f.type||"other",vintage:vin,price:f.price>0?r2(f.price):null,cs:Number.isInteger(+f.cs)&&+f.cs>0?+f.cs:6,note:(f.note||"").trim(),created:ed?w.created:Date.now()};
     const s=snapshot();if(ed)wines=wines.map(x=>x.id===w.id?out:x);else wines.push(out);
     if(!save()){restoreSnap(s);err.textContent=saveFailMsg();err.hidden=false;return}
     refreshAll();if(onSaved)onSaved(out);else pop();
   }
-  return{get title(){return ed?wineLabel(w):"יין חדש"},lead:"ביטול",trail:{label:"שמירה",fn:submit},render(){
+  return{get title(){return ed?wineLabel(w):"מוצר חדש"},lead:"ביטול",trail:{label:"שמירה",fn:submit},render(){
     err=h("p",{class:"errline",hidden:true,role:"alert"});
     const W=h("div",{class:"pagewrap"},err);
     if(ed){const s=wineStats(w.id);
@@ -797,62 +828,73 @@ function winePage(w,onSaved){
         tile("wine","במלאי",NI.format(s.stock),"בקבוקים",null,true),
         tile("cap","קרן במלאי",money(s.value),"עלות ממוצעת "+money(s.avg)),
         tile("sale","נמכרו",NI.format(s.sold),"הכנסות "+money(s.rev),null,true),
-        tile("prof","רווח מהיין",money(s.prof),"שולי רווח "+pct(s.prof,s.rev))));
+        tile("prof","רווח מהמוצר",money(s.prof),"שולי רווח "+pct(s.prof,s.rev))));
     }
-    W.append(sec("פרטי היין",grp(
-      h("div",{class:"cell"},h("input",{class:"text",placeholder:"שם היין (חובה)",value:f.name,oninput:e=>{f.name=e.target.value}})),
-      h("div",{class:"cell"},h("input",{class:"text",placeholder:"יקב",value:f.winery,oninput:e=>{f.winery=e.target.value}})),
-      h("label",{class:"cell"},h("span",{class:"grow"},"שנת בציר"),h("input",{class:"numin short",inputmode:"numeric",placeholder:"—",value:f.vintage||"",oninput:e=>{f.vintage=e.target.value}})),
+    const isWine=tgroup(f.type)==="wine";
+    W.append(sec("סוג",grp(h("button",{class:"cell withicon",onclick:()=>push(pickerPage("סוג",Object.entries(WTYPES),f.type,v=>{f.type=v}))},prodSq({type:f.type}),h("span",{class:"grow"},WTYPES[f.type]||"אחר"),h("span",{class:"val"},TGROUPS[tgroup(f.type)]),disc()))));
+    W.append(sec("פרטים",grp(
+      h("div",{class:"cell"},h("input",{class:"text",placeholder:"שם (חובה)",value:f.name,oninput:e=>{f.name=e.target.value}})),
+      h("div",{class:"cell"},h("input",{class:"text",placeholder:isWine?"יקב":"מותג או מזקקה",value:f.winery,oninput:e=>{f.winery=e.target.value}})),
+      isWine&&h("label",{class:"cell"},h("span",{class:"grow"},"שנת בציר"),h("input",{class:"numin short",inputmode:"numeric",placeholder:"—",value:f.vintage||"",oninput:e=>{f.vintage=e.target.value}})),
       h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"מחיר מכירה רגיל"),h("span",{class:"t2"},"ימולא אוטומטית במכירה")),h("input",{class:"numin",inputmode:"decimal",placeholder:"0.00",value:f.price==null?"":String(f.price),oninput:e=>{const n=pnum(e.target.value);f.price=isNaN(n)?null:n}})),
       h("label",{class:"cell"},h("span",{class:"grow"},h("span",{class:"t1"},"בקבוקים בארגז"),h("span",{class:"t2"},"ימולא אוטומטית כשבוחרים ארגזים")),h("input",{class:"numin short",inputmode:"numeric",value:f.cs||6,oninput:e=>{f.cs=parseInt(e.target.value,10)}})),
       h("div",{class:"cell"},h("input",{class:"text",placeholder:"הערה",value:f.note||"",oninput:e=>{f.note=e.target.value}}))
-    )),sec("סוג",(()=>{const s=h("div",{class:"seg dense"},...Object.entries(WTYPES).map(([k,l])=>h("button",{"data-ty":k,onclick:()=>{f.type=k;setSeg(s,"ty",k)}},l)));setSeg(s,"ty",f.type);return s})()));
+    )));
     if(ed){const used=txs.some(t=>t.lines&&t.lines.some(l=>l.w===w.id));
       W.append(sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>{
-        if(used){banner("אי אפשר למחוק יין שמופיע במכירות או בקניות.");return}
-        actionSheet({title:"למחוק את היין?",what:wineLabel(w),buttons:[{label:"מחיקת יין",destructive:true,fn:()=>{const s=snapshot();wines=wines.filter(x=>x.id!==w.id);save();pop();refreshAll();banner("היין נמחק",undoTo(s))}}]})}},"מחיקת יין")),
-        used&&sf("יין שכבר נמכר או נקנה נשאר ברשימה כדי שההיסטוריה תישאר מדויקת.")));
+        if(used){banner("אי אפשר למחוק מוצר שמופיע במכירות או בקניות.");return}
+        actionSheet({title:"למחוק את המוצר?",what:wineLabel(w),buttons:[{label:"מחיקת מוצר",destructive:true,fn:()=>{const s=snapshot();wines=wines.filter(x=>x.id!==w.id);save();pop();refreshAll();banner("המוצר נמחק",undoTo(s))}}]})}},"מחיקת מוצר")),
+        used&&sf("מוצר שכבר נמכר או נקנה נשאר ברשימה כדי שההיסטוריה תישאר מדויקת.")));
     }
     return W}};
 }
 
-function winesPage(){let mode="stock";return{title:"יינות ומלאי",trail:{label:"הוספה",fn:()=>push(winePage(null))},render(){
+function winesPage(){let mode="stock",grpF="all",q="";return{title:"מלאי",trail:{label:"הוספה",fn:()=>go(winePage(null))},render(){
   const cap=capital();
   const W=h("div",{class:"pagewrap"});
   W.append(h("div",{class:"tiles"},
-    tile("wine","במלאי",NI.format(cap.q),"בקבוקים",null,true),
+    tile("wine","במלאי",NI.format(cap.q),"בקבוקים · "+wines.filter(w=>C.stock(w.id)>0).length+" מוצרים",null,true),
     tile("cap","קרן בסחורה",money(cap.v),"שווי במחיר מכירה "+money(cap.pv))));
+  const gseg=h("div",{class:"seg"},...[["all","הכול"],...Object.entries(TGROUPS)].map(([k,l])=>h("button",{"data-g":k,onclick:()=>{grpF=k;setSeg(gseg,"g",k);fill()}},l)));setSeg(gseg,"g",grpF);
   const seg=h("div",{class:"seg"},...[["stock","במלאי"],["all","הכול"],["out","אזלו"]].map(([k,l])=>h("button",{"data-m":k,onclick:()=>{mode=k;setSeg(seg,"m",k);fill()}},l)));setSeg(seg,"m",mode);
-  const list=grp(),emptyEl=h("div",{class:"empty"});
-  const fill=()=>{list.replaceChildren();
-    const ws=wines.filter(w=>{const s=C.stock(w.id);return mode==="all"||(mode==="stock"?s>0:s<=0)}).sort((a,b)=>a.name.localeCompare(b.name,"he"));
-    for(const w of ws){const s=C.stock(w.id),a=C.avg(w.id);
-      list.append(h("button",{class:"cell withicon",onclick:()=>push(winePage(w))},sq("wine"),
-        h("span",{class:"grow"},h("span",{class:"t1"},wineLabel(w)),h("span",{class:"t2"},[w.winery,WTYPES[w.type],a>0?"עלות "+money(a):"",w.price?"מכירה "+money(w.price):""].filter(Boolean).join(" · "))),
-        h("span",{class:"val num"+(s<=0?" neg":"")},NI.format(s)),disc()))}
-    list.hidden=!ws.length;emptyEl.hidden=!!ws.length;
-    emptyEl.replaceChildren(h("span",{class:"ei",html:icon("wine")}),h("b",null,wines.length?"אין יינות ברשימה הזו":"עוד אין יינות"),h("span",null,wines.length?"נסו לבחור סינון אחר.":"הקישו על \"הוספה\" כדי להוסיף יין, או פשוט רשמו קנייה ראשונה."))};
+  const box=h("div",{class:"pagewrap"}),emptyEl=h("div",{class:"empty"});
+  const fill=()=>{box.replaceChildren();
+    const ws=wines.filter(w=>{const s=C.stock(w.id);return(mode==="all"||(mode==="stock"?s>0:s<=0))&&(grpF==="all"||tgroup(w.type)===grpF)&&(!q||(w.name+" "+(w.winery||"")+" "+(WTYPES[w.type]||"")).toLowerCase().includes(q))});
+    const byType={};for(const w of ws)(byType[w.type in WTYPES?w.type:"other"]||(byType[w.type in WTYPES?w.type:"other"]=[])).push(w);
+    for(const k of Object.keys(WTYPES))if(byType[k]){const list=grp();let n=0;
+      for(const w of byType[k].sort((a,b)=>a.name.localeCompare(b.name,"he"))){const s=C.stock(w.id),a=C.avg(w.id);n+=Math.max(0,s);
+        list.append(h("button",{class:"cell withicon",onclick:()=>go(winePage(w))},prodSq(w),
+          h("span",{class:"grow"},h("span",{class:"t1"},wineLabel(w)),h("span",{class:"t2"},[w.winery,a>0?"עלות "+money(a):"",w.price?"מכירה "+money(w.price):""].filter(Boolean).join(" · "))),
+          h("span",{class:"val num"+(s<=0?" neg":"")},NI.format(s)),disc()))}
+      box.append(sec(h("span",{style:"display:contents"},h("span",null,WTYPES[k]),h("span",null,bottles(n))),list))}
+    emptyEl.hidden=!!ws.length;
+    emptyEl.replaceChildren(h("span",{class:"ei",html:icon("bottle")}),h("b",null,wines.length?"אין מוצרים ברשימה הזו":"עוד אין מוצרים במלאי"),
+      h("span",null,wines.length?"נסו סינון אחר.":"הוסיפו יין או שתייה חריפה, או פשוט רשמו קנייה ראשונה דרך כפתור ה־+."),
+      !wines.length&&h("button",{class:"cell tint center",onclick:()=>go(winePage(null))},"הוספת מוצר"))};
   fill();
-  W.append(seg,h("div",{class:"sec"},list,emptyEl,sf("המספר בצד הוא כמות הבקבוקים במלאי. העלות היא ממוצע מחירי הקנייה של הבקבוקים שנשארו.")));
-  if(cap.noPrice)W.append(sf("ל־"+cap.noPrice+" יינות במלאי אין מחיר מכירה רגיל, ולכן השווי שלהם מחושב לפי העלות."));
+  W.append(gseg,seg);
+  if(wines.length>6)W.append(grp(h("div",{class:"cell withicon"},h("span",{class:"sq b-gray",html:icon("search")}),h("input",{class:"text",type:"search",placeholder:"חיפוש מוצר",value:q,oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}}))));
+  W.append(box,emptyEl,sf("המספר בצד הוא כמות הבקבוקים במלאי. העלות היא ממוצע מחירי הקנייה של הבקבוקים שנשארו."));
+  if(cap.noPrice)W.append(sf("ל־"+cap.noPrice+" מוצרים במלאי אין מחיר מכירה רגיל, ולכן השווי שלהם מחושב לפי העלות."));
   return W}}}
 
 /* ---------- customers ---------- */
 const waLink=p=>{let d=(p||"").replace(/\D/g,"");if(d.startsWith("0"))d="972"+d.slice(1);return d?"https://wa.me/"+d:null};
-function custsPage(){let q="";return{title:"לקוחות",trail:{label:"הוספה",fn:()=>push(custForm(null))},render(){
+function custsPage(){let q="";return{title:"לקוחות",trail:{label:"הוספה",fn:()=>go(custForm(null))},render(){
   const list=grp(),emptyEl=h("div",{class:"empty"});
   let totDebt=0;for(const t of txs)if(t.kind==="sale"&&!t.paid)totDebt+=linesTot(t);
   const fill=()=>{list.replaceChildren();
     const cs=custList().filter(c=>!q||(c.name+" "+(c.phone||"")).toLowerCase().includes(q));
     for(const c of cs){const s=cstats(c.id);
-      list.append(h("button",{class:"cell withicon",onclick:()=>push(custPage(c.id))},sq("cust","user"),
+      list.append(h("button",{class:"cell withicon",onclick:()=>go(custPage(c.id))},sq("cust","user"),
         h("span",{class:"grow"},h("span",{class:"t1"},c.name),h("span",{class:"t2"},s.last?("קנה לאחרונה ב־"+shortDate(s.last.date)+" · סה״כ "+money(s.rev)):"עוד לא קנה")),
         s.debt>0.004&&nm(s.debt,false,"val strong"),disc()))}
     list.hidden=!cs.length;emptyEl.hidden=!!cs.length;
-    emptyEl.replaceChildren(h("span",{class:"ei",html:icon("users")}),h("b",null,custs.length?"לא נמצאו לקוחות":"עוד אין לקוחות"),h("span",null,custs.length?"נסו חיפוש אחר.":"לקוחות נשמרים אוטומטית כשרושמים מכירה עם שם לקוח."))};
+    emptyEl.replaceChildren(h("span",{class:"ei",html:icon("users")}),h("b",null,custs.length?"לא נמצאו לקוחות":"עוד אין לקוחות"),h("span",null,custs.length?"נסו חיפוש אחר.":"לקוחות נשמרים אוטומטית כשרושמים מכירה עם שם לקוח."),!custs.length&&h("button",{class:"cell tint center",onclick:()=>go(custForm(null))},"הוספת לקוח"))};
   fill();
   return h("div",{class:"pagewrap"},
-    custs.length>5&&grp(h("div",{class:"cell withicon"},h("span",{class:"sq b-gray",html:icon("search")}),h("input",{class:"text",type:"search",placeholder:"חיפוש לפי שם או טלפון",oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}}))),
+    h("div",{class:"tiles"},tile("custs","לקוחות",NI.format(custs.length),custs.filter(c=>cstats(c.id).n).length+" קנו לפחות פעם אחת",null,true),tile("cap","חובות פתוחים",money(totDebt),totDebt>0.004?custs.filter(c=>cstats(c.id).debt>0.004).length+" לקוחות":"אין חובות")),
+    custs.length>5&&grp(h("div",{class:"cell withicon"},h("span",{class:"sq b-gray",html:icon("search")}),h("input",{class:"text",type:"search",placeholder:"חיפוש לפי שם או טלפון",value:q,oninput:e=>{q=e.target.value.trim().toLowerCase();fill()}}))),
     h("div",{class:"sec"},list,emptyEl,totDebt>0.004&&h("p",{class:"sf"},"סה״כ חובות פתוחים: ",nm(totDebt)," · מסומנים בכתום.")))}}}
 
 function custPage(cid){return{get title(){return custName(cid)||"לקוח"},trail:{label:"עריכה",fn:()=>{const c=custById(cid);if(c)push(custForm(c))}},render(){
@@ -873,7 +915,7 @@ function custPage(cid){return{get title(){return custName(cid)||"לקוח"},trai
       h("div",{class:"cell withicon"},sq("cap","clock"),h("span",{class:"grow"},h("span",{class:"t1"},"סה״כ לגבייה"),h("span",{class:"t2"},unpaid.length+(unpaid.length===1?" מכירה לא שולמה":" מכירות לא שולמו"))),nm(s.debt,false,"val strong")),
       h("button",{class:"cell tint",onclick:()=>actionSheet({title:"לסמן שהכול שולם?",what:[c.name+" · ",nm(s.debt)],msg:"הסכום ייכנס לתזרים של היום.",buttons:[{label:"סימון כשולם",fn:()=>{const sn=snapshot();const d=todayStr();txs=txs.map(t=>unpaid.includes(t)?{...t,paid:true,paidDate:d}:t);save();refreshAll();banner("החוב סומן כשולם",undoTo(sn))}}]})},"סימון שהכול שולם"))))}
   const fav=Object.entries(s.wq).sort((a,b)=>b[1].q-a[1].q).slice(0,5);
-  if(fav.length)W.append(sec("היינות שלו",grp(...fav.map(([w,o])=>h("div",{class:"cell withicon"},sq("wine"),h("span",{class:"grow"},h("span",{class:"t1"},wineLabel(wineById(w))),h("span",{class:"t2"},"קנה "+bottles(o.q))),h("span",{class:"val"},"אחרון ",nm(o.last)))))));
+  if(fav.length)W.append(sec("מה הוא קונה",grp(...fav.map(([w,o])=>h("div",{class:"cell withicon"},prodSq(wineById(w)),h("span",{class:"grow"},h("span",{class:"t1"},wineLabel(wineById(w))),h("span",{class:"t2"},"קנה "+bottles(o.q))),h("span",{class:"val"},"אחרון ",nm(o.last)))))));
   if(s.n){const hg=grp();for(const t of s.sales)hg.append(h("button",{class:"cell",onclick:()=>push(txPage(t))},h("span",{class:"grow"},h("span",{class:"t1"},shortDate(t.date)+(t.date.slice(0,4)!==todayStr().slice(0,4)?" "+t.date.slice(0,4):"")),h("span",{class:"t2"},bottles(linesQ(t))+" · "+linesText(t.lines),!t.paid&&h("span",{class:"warn"}," · לא שולם"))),nm(linesTot(t),false,"amt"),disc()));
     W.append(sec("היסטוריה",hg))}
   else W.append(sf("עוד אין מכירות ללקוח הזה."));
@@ -1099,7 +1141,7 @@ function cloudAccountForm(a){
 function cloudSec(){
   const T="סנכרון בין טלפונים";
   if(!cloud)return sec(T,grp(h("div",{class:"cell withicon"},sq("gray","cloud"),h("span",{class:"grow"},h("span",{class:"t1"},"לא הוגדר"),h("span",{class:"t2 wrap"},"כדי לסנכרן בין טלפונים צריך לחבר את האפליקציה ל־Firebase. ההוראות בקובץ FIREBASE.md.")))));
-  if(!cloudOn())return sec(T,grp(h("button",{class:"cell withicon",onclick:()=>push(authPage())},sq("cust","cloud"),
+  if(!cloudOn())return sec(T,grp(h("button",{class:"cell withicon",onclick:()=>go(authPage())},sq("cust","cloud"),
       h("span",{class:"grow"},h("span",{class:"t1"},"כניסה או הרשמה"),h("span",{class:"t2 wrap"},"כדי לראות את אותם נתונים בכמה טלפונים ולשתף חשבון עם שותף")),disc())),
     cloud.err&&h("p",{class:"errline"},cloud.err),sf("בלי כניסה, הנתונים נשמרים רק בטלפון הזה."));
   const u=cloud.user;
@@ -1207,8 +1249,8 @@ function settingsPage(){return{title:"הגדרות",render(){
   return h("div",{class:"pagewrap"},
     sec("חשבון",grp(
       ...accounts.map(a=>h("button",{class:"cell withicon","aria-checked":String(a.id===acc),onclick:()=>{if(a.id!==acc){switchAccount(a.id);banner("עברתם לחשבון "+a.name)}}},sq(a.id===acc?"cust":"gray","user"),h("span",{class:"grow"},h("span",{class:"t1"},a.name),h("span",{class:"t2"},accDesc(a))),h("span",{class:"checkmark",html:icon("check")}))),
-      h("button",{class:"cell tint",onclick:()=>push(accountsPage())},accounts.length>1||cloudOn()?"ניהול חשבונות ושיתוף":"הוספת חשבון ושינוי שם")),
-      sf("לכל חשבון יש יינות, לקוחות, מכירות והוצאות משלו, עם אותם מסכים. למשל חשבון פרטי וחשבון עם שותף.")),
+      h("button",{class:"cell tint",onclick:()=>go(accountsPage())},accounts.length>1||cloudOn()?"ניהול חשבונות ושיתוף":"הוספת חשבון ושינוי שם")),
+      sf("לכל חשבון יש מלאי, לקוחות, מכירות והוצאות משלו, עם אותם מסכים. למשל חשבון פרטי וחשבון עם שותף.")),
     cloudSec(),
     sec("מראה",seg),
     sec("ייצוא וגיבוי",grp(
@@ -1216,8 +1258,8 @@ function settingsPage(){return{title:"הגדרות",render(){
       h("button",{class:"cell withicon",onclick:backup},sq("cust","down"),h("span",{class:"grow"},h("span",{class:"t1"},"גיבוי נתונים"),h("span",{class:"t2"},lb?"גיבוי אחרון: "+new Date(lb).toLocaleDateString("he-IL"):"עוד לא גיביתם")),disc()),
       h("button",{class:"cell withicon",onclick:()=>{$("restoreIn").value="";$("restoreIn").click()}},sq("gray","up"),h("span",{class:"grow"},"שחזור מגיבוי"),disc())),
       sf((accounts.length>1?"הגיבוי והייצוא הם של החשבון "+accName()+". ":"")+"הנתונים נשמרים רק בטלפון הזה. כדאי לגבות פעם בחודש ולשמור את הקובץ בקבצים, במייל או בדרייב.")),
-    sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" יינות · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
-    sf("המרתף · גרסה 4"))}}}
+    sec(null,grp(h("button",{class:"cell center destructive",onclick:()=>actionSheet({title:accounts.length>1?"למחוק את כל הנתונים בחשבון "+accName()+"?":"למחוק את כל הנתונים?",what:wines.length+" מוצרים · "+custs.length+" לקוחות · "+txs.length+" תנועות",msg:"מומלץ לגבות לפני כן.",buttons:[{label:"מחיקת הכול",destructive:true,fn:()=>{const s=snapshot();wines=[];custs=[];txs=[];save();closeSheets();refreshAll();banner("כל הנתונים נמחקו",undoTo(s))}}]})},"מחיקת כל הנתונים"))),
+    sf("המרתף · גרסה 5"))}}}
 
 /* ---------- files ---------- */
 async function deliver(blob,name){
@@ -1230,7 +1272,7 @@ async function deliver(blob,name){
 async function backup(){
   const data={app:"cellar",version:1,account:accName(),exported:new Date().toISOString(),wines,customers:custs,txs};
   const r=await deliver(new Blob([JSON.stringify(data,null,1)],{type:"application/json"}),"המרתף-גיבוי-"+(accounts.length>1?safeName(accName())+"-":"")+todayStr()+".json");
-  if(r==="ok"){setLS(dk(K.backup),String(Date.now()));rerender()}
+  if(r==="ok"){setLS(dk(K.backup),String(Date.now()));refreshAll()}
 }
 const isD=s=>typeof s==="string"&&/^\d{4}-\d{2}-\d{2}$/.test(s);
 const str=v=>typeof v==="string"?v:"";
@@ -1327,7 +1369,7 @@ async function exportXlsx(){if(!txs.length&&!wines.length){banner("אין עדי
   await deliver(buildXlsx(xlsxSheets()),"המרתף-"+(accounts.length>1?safeName(accName())+"-":"")+todayStr()+".xlsx")}
 
 /* ---------- main render ---------- */
-function tile(k,label,v,cp,acc,plain){return h("div",{class:"tile"},h("span",{class:"tl c-"+k},h("i",{class:"b-"+k,html:icon(k)}),label),h("span",{class:plain?"v num":"v num"},v),cp&&h("span",{class:"cp"},cp),acc&&h("span",{class:"acc"},...acc))}
+function tile(k,label,v,cp,acc,plain){const ic={custs:"users"}[k]||k;if(k==="custs")k="cust";return h("div",{class:"tile"},h("span",{class:"tl c-"+k},h("i",{class:"b-"+k,html:icon(ic)}),label),h("span",{class:plain?"v num":"v num"},v),cp&&h("span",{class:"cp"},cp),acc&&h("span",{class:"acc"},...acc))}
 function barRow(name,amount,part,total,colorCls,sub){const p=total>0?Math.max(0,Math.min(100,part/total*100)):0;
   return h("div",{class:"barrow"},h("div",{class:"top"},h("span",{class:"grow"},h("span",{class:"t1"},name),sub&&h("span",{class:"t2"},sub)),nm(amount,false,"val"),h("span",{class:"pct num"},Math.round(p)+"%")),h("div",{class:"track"},h("div",{class:"fill "+colorCls,style:"width:"+p.toFixed(1)+"%"})))}
 
@@ -1368,6 +1410,20 @@ function sampleData(){
   save();refreshAll();
 }
 
+/* ---------- tabs ---------- */
+const TABS={home:"המרתף",custs:"לקוחות",stock:"מלאי",settings:"הגדרות"};
+let tab=getLS("cel-tab","home");if(!TABS[tab])tab="home";
+const tabPages={custs:custsPage(),stock:winesPage(),settings:settingsPage()};
+function setTab(t){if(t===tab){scrollTo({top:0,behavior:"smooth"});return}closeRow();tab=t;setLS("cel-tab",t);scrollTo(0,0);render()}
+function renderTabbar(noAcc){
+  document.querySelectorAll(".tab").forEach(b=>{if(b.dataset.tab===tab)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
+  $("plusBtn").hidden=noAcc;
+  const debtors=noAcc?0:custs.filter(c=>txs.some(t=>t.kind==="sale"&&t.cust===c.id&&!t.paid)).length;
+  const out=noAcc?0:wines.filter(w=>C.hasCost(w.id)&&C.stock(w.id)<=0).length;
+  const setB=(el,n)=>{el.hidden=!n;el.textContent=n>99?"99+":String(n)};
+  setB($("badgeCusts"),debtors);setB($("badgeStock"),out);
+  $("badgeCusts").title=debtors?debtors+" לקוחות עם חוב פתוח":"";$("badgeStock").title=out?out+" מוצרים שאזלו מהמלאי":"";
+}
 function render(){
   C=compute();
   const now=monthOf(todayStr());
@@ -1375,12 +1431,15 @@ function render(){
   const useSeg=!!acc&&accounts.length>=2&&accounts.length<=4;
   $("acctBtn").hidden=!acc||useSeg;$("acctSeg").hidden=!useSeg;
   if(useSeg)$("acctSeg").replaceChildren(...accounts.map(a=>h("button",{"aria-pressed":String(a.id===acc),title:a.name,onclick:()=>{if(a.id!==acc){switchAccount(a.id);banner("עברתם לחשבון "+a.name)}}},a.name)));
-  const noAcc=cloudOn()&&!acc;$("saleBtn").parentElement.hidden=noAcc;$("addBtn").hidden=noAcc;
+  const noAcc=cloudOn()&&!acc;
+  renderTabbar(noAcc);
+  $("bigTitle").textContent=TABS[tab];$("monthRow").hidden=tab!=="home";
+  const tp=tabPages[tab];$("addBtn").hidden=noAcc||!(tp&&tp.trail);
   if(cloud)renderSync();
-  $("navTitle").textContent=multi?accName():"המרתף";document.title=multi?"המרתף · "+accName():"המרתף";
+  $("navTitle").textContent=tab==="home"?(multi?accName():"המרתף"):TABS[tab];document.title=multi?"המרתף · "+accName():"המרתף";
   $("mLabel").textContent=monthLabel(cur);$("nextM").disabled=cur>=now;
   const M=$("main");M.replaceChildren();
-  if(noAcc){
+  if(noAcc&&tab!=="settings"){
     M.append(h("div",{class:"card"},h("div",{class:"empty"},h("span",{class:"ei",html:icon("cloud")}),
       h("b",null,cloud.ledgersReady?"אין עדיין חשבון בענן":"טוען חשבונות…"),
       h("span",null,"צרו חשבון חדש, או בקשו מהשותף לשתף איתכם את החשבון המשותף לפי המייל "+cloud.user.email+"."),
@@ -1388,10 +1447,11 @@ function render(){
       localWithData().length&&h("button",{class:"cell tint center",onclick:offerUpload},"העלאת החשבונות מהטלפון"))));
     return;
   }
+  if(tp){M.append(tp.render());return}
   if(!txs.length&&!wines.length){
     M.append(h("div",{class:"card"},h("div",{class:"empty"},h("span",{class:"ei",html:icon("wine")}),h("b",null,"ברוכים הבאים למרתף"),
       h("span",null,"רשמו קנייה של סחורה, ואחר כך מכירות. האפליקציה תחשב לבד כמה נשאר במלאי, כמה כסף שלכם יושב בסחורה ומה הרווח."),
-      cloud&&!cloudOn()&&h("button",{class:"cell tint center",onclick:()=>{openSheet(settingsPage());push(authPage())}},"כבר יש לי חשבון בענן · כניסה"),
+      cloud&&!cloudOn()&&h("button",{class:"cell tint center",onclick:()=>go(authPage())},"כבר יש לי חשבון בענן · כניסה"),
       h("button",{class:"cell tint center",onclick:sampleData},"להסתכל קודם עם נתוני דוגמה"))));
     return;
   }
@@ -1407,8 +1467,8 @@ function render(){
     tile("exp","הוצאות",money(r.exp),r.nExp?r.nExp+(r.nExp===1?" הוצאה":" הוצאות"):"אין הוצאות")));
   // links
   M.append(grp(
-    h("button",{class:"cell withicon",onclick:()=>openSheet(winesPage())},sq("wine"),h("span",{class:"grow"},h("span",{class:"t1"},"יינות ומלאי"),h("span",{class:"t2"},wines.length+" יינות · "+bottles(cap.q)+" במלאי")),disc()),
-    h("button",{class:"cell withicon",onclick:()=>openSheet(custsPage())},sq("cust","users"),h("span",{class:"grow"},h("span",{class:"t1"},"לקוחות"),h("span",{class:"t2"},custs.length+" לקוחות"+(cap.debt>0.004?" · חובות פתוחים "+money(cap.debt):""))),disc())));
+    h("button",{class:"cell withicon",onclick:()=>setTab("stock")},sq("spirit","bottle"),h("span",{class:"grow"},h("span",{class:"t1"},"מלאי"),h("span",{class:"t2"},wines.length+" מוצרים · "+bottles(cap.q)+" במלאי")),disc()),
+    h("button",{class:"cell withicon",onclick:()=>setTab("custs")},sq("cust","users"),h("span",{class:"grow"},h("span",{class:"t1"},"לקוחות"),h("span",{class:"t2"},custs.length+" לקוחות"+(cap.debt>0.004?" · חובות פתוחים "+money(cap.debt):""))),disc())));
   // capital & profit
   const cg=grp(
     h("div",{class:"cell withicon"},sq("cap"),h("span",{class:"grow"},h("span",{class:"t1"},"הקרן שלכם בסחורה"),h("span",{class:"t2"},bottles(cap.q)+" במלאי, לפי מחיר הקנייה")),nm(cap.v,false,"val strong")),
@@ -1439,10 +1499,10 @@ function render(){
   // top wines
   const tw=Object.entries(r.wines).sort((a,b)=>b[1].prof-a[1].prof).slice(0,5);
   if(tw.length){const totP=Object.values(r.wines).reduce((s,o)=>s+Math.max(0,o.prof),0);
-    M.append(sec("היינות הרווחיים ב"+monthName(cur),grp(...tw.map(([w,o])=>barRow(wineLabel(wineById(w)),o.prof,Math.max(0,o.prof),totP,"b-prof",bottles(o.q)+" · מכירות "+money(o.rev))))))}
+    M.append(sec("המוצרים הרווחיים ב"+monthName(cur),grp(...tw.map(([w,o])=>barRow(wineLabel(wineById(w)),o.prof,Math.max(0,o.prof),totP,"b-prof",bottles(o.q)+" · מכירות "+money(o.rev))))))}
   // top customers
   const tc=Object.entries(r.custs).sort((a,b)=>b[1].rev-a[1].rev).slice(0,5);
-  if(tc.length&&!(tc.length===1&&tc[0][0]==="_"))M.append(sec("הלקוחות הגדולים ב"+monthName(cur),grp(...tc.map(([c,o])=>h(c==="_"?"div":"button",{class:"cell withicon",onclick:c==="_"?null:()=>{openSheet(custsPage());push(custPage(c))}},sq(c==="_"?"gray":"cust","user"),
+  if(tc.length&&!(tc.length===1&&tc[0][0]==="_"))M.append(sec("הלקוחות הגדולים ב"+monthName(cur),grp(...tc.map(([c,o])=>h(c==="_"?"div":"button",{class:"cell withicon",onclick:c==="_"?null:()=>openSheet(custPage(c))},sq(c==="_"?"gray":"cust","user"),
     h("span",{class:"grow"},h("span",{class:"t1"},c==="_"?"ללא שם":custName(c)),h("span",{class:"t2"},o.n+(o.n===1?" הזמנה":" הזמנות")+" · רווח "+money(o.prof))),nm(o.rev,false,"val"),c!=="_"&&disc())))));
   // expenses by cat
   const ec=Object.entries(r.cats).sort((a,b)=>b[1]-a[1]);
@@ -1452,7 +1512,7 @@ function render(){
   setSeg(seg,"f",filter);M.append(seg);
   const list=txs.filter(t=>monthOf(t.date)===cur&&(filter==="all"||t.kind===filter)).sort(byDateDesc);
   if(!list.length){const any=txs.some(t=>monthOf(t.date)===cur);
-    M.append(h("div",{class:"empty"},h("span",{class:"ei",html:icon(filter==="all"?"wine":filter)}),h("b",null,any?"אין "+({sale:"מכירות",buy:"קניות",exp:"הוצאות"}[filter])+" בחודש הזה":"אין תנועות ב"+monthName(cur)),h("span",null,any?"נסו סינון אחר.":"הקישו על \"מכירה חדשה\", או על + כדי לרשום קנייה או הוצאה.")))}
+    M.append(h("div",{class:"empty"},h("span",{class:"ei",html:icon(filter==="all"?"wine":filter)}),h("b",null,any?"אין "+({sale:"מכירות",buy:"קניות",exp:"הוצאות"}[filter])+" בחודש הזה":"אין תנועות ב"+monthName(cur)),h("span",null,any?"נסו סינון אחר.":"הקישו על + למטה כדי לרשום מכירה, קנייה או הוצאה.")))}
   else{let day=null,g=null;
     for(const t of list){if(t.date!==day){day=t.date;g=grp();
         const dt=list.filter(x=>x.date===day);const inc=dt.filter(x=>x.kind==="sale").reduce((s,x)=>s+linesTot(x),0);
@@ -1465,19 +1525,20 @@ function refreshAll(){render();if(stack.length)rerender()}
 /* ---------- wiring ---------- */
 $("prevM").addEventListener("click",()=>{cur=addMonth(cur,-1);render()});
 $("nextM").addEventListener("click",()=>{cur=addMonth(cur,1);render()});
-$("saleBtn").addEventListener("click",()=>openSheet(txPage(null,{kind:"sale"})));
-$("setBtn").addEventListener("click",()=>openSheet(settingsPage()));
+document.querySelectorAll(".tab").forEach(b=>b.addEventListener("click",()=>setTab(b.dataset.tab)));
+const newMenu=()=>actionSheet({title:"מה רושמים?",buttons:[
+  {label:"מכירה",fn:()=>openSheet(txPage(null,{kind:"sale"}))},
+  {label:"קניית סחורה",fn:()=>openSheet(txPage(null,{kind:"buy"}))},
+  {label:"הוצאה",fn:()=>openSheet(txPage(null,{kind:"exp"}))},
+  {label:"מוצר חדש למלאי",fn:()=>openSheet(winePage(null))},
+  {label:"לקוח חדש",fn:()=>openSheet(custForm(null))}]});
+$("plusBtn").addEventListener("click",newMenu);
 $("acctBtn").addEventListener("click",()=>actionSheet({title:accounts.length>1?"מעבר לחשבון":accName(),buttons:[
   ...accounts.filter(a=>a.id!==acc).map(a=>({label:a.name,fn:()=>{switchAccount(a.id);banner("עברתם לחשבון "+a.name)}})),
   {label:"הוספת חשבון",fn:()=>{openSheet(accountsPage());push(accountForm(null))}},
   {label:"ניהול חשבונות ושיתוף",fn:()=>openSheet(accountsPage())}]}));
 $("acctNav").addEventListener("click",()=>openSheet(accountsPage()));
-$("addBtn").addEventListener("click",()=>actionSheet({buttons:[
-  {label:"מכירה",fn:()=>openSheet(txPage(null,{kind:"sale"}))},
-  {label:"קניית סחורה",fn:()=>openSheet(txPage(null,{kind:"buy"}))},
-  {label:"הוצאה",fn:()=>openSheet(txPage(null,{kind:"exp"}))},
-  {label:"יין חדש",fn:()=>openSheet(winePage(null))},
-  {label:"לקוח חדש",fn:()=>openSheet(custForm(null))}]}));
+$("addBtn").addEventListener("click",()=>{const tp=tabPages[tab];if(tp&&tp.trail)tp.trail.fn()});
 document.addEventListener("visibilitychange",()=>{if(!document.hidden&&!stack.length)render()});
 
 render();
